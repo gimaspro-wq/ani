@@ -16,7 +16,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings
 from app.db.database import Base
-from app.db.models import User, RefreshToken  # Import all models
+from app.db.models import User, RefreshToken, Anime, Episode, VideoSource  # Import all models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

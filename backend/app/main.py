@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.api.v1 import auth, users, library
+from app.api.v1 import auth, users, library, anime, internal
 from app.core.config import settings
 from app.core.errors import AppError
 from app.core.exception_handlers import (
@@ -127,6 +127,8 @@ if settings.TRACING_ENABLED:
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(library.router, prefix="/api/v1")
+app.include_router(anime.router, prefix="/api/v1")
+app.include_router(internal.router, prefix="/api/v1")
 
 
 @app.get("/")

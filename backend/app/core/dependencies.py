@@ -1,15 +1,33 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.database import get_db
 from app.db.models import User
 
 security = HTTPBearer()
+
+
+async def verify_internal_token(x_internal_token: str = Header(...)) -> None:
+    """
+    Verify the internal API token.
+    
+    Args:
+        x_internal_token: The internal token from X-Internal-Token header
+        
+    Raises:
+        HTTPException: If token is invalid
+    """
+    if x_internal_token != settings.INTERNAL_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid internal token"
+        )
 
 
 async def get_current_user(

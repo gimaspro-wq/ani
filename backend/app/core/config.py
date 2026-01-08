@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     
     # Security - NO DEFAULTS for secrets
     SECRET_KEY: str
+    INTERNAL_TOKEN: str  # Token for internal API (parser access)
     ALGORITHM: str = "HS256"
     JWT_ACCESS_TTL_MINUTES: int = 15
     REFRESH_TTL_DAYS: int = 30
@@ -89,6 +90,22 @@ class Settings(BaseSettings):
                     "SECRET_KEY appears to be a default/weak value. "
                     "Generate a secure key with: openssl rand -hex 32"
                 )
+        
+        return v
+    
+    @field_validator("INTERNAL_TOKEN")
+    @classmethod
+    def validate_internal_token(cls, v: str, info) -> str:
+        """Validate INTERNAL_TOKEN is set."""
+        if not v:
+            raise ValueError("INTERNAL_TOKEN must be set and cannot be empty")
+        
+        env = info.data.get("ENV", "dev")
+        if env == "production" and len(v) < 32:
+            raise ValueError(
+                "INTERNAL_TOKEN must be at least 32 characters in production. "
+                "Generate with: openssl rand -hex 32"
+            )
         
         return v
     
