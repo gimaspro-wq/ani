@@ -48,9 +48,9 @@ async def admin_login(
     """
     admin = await authenticate_admin(db, login_data.email, login_data.password)
     
-    # Create access token with admin claim
+    # Create access token with admin claim (no email needed in token)
     access_token = create_access_token(
-        data={"sub": admin.id, "admin": True, "email": admin.email}
+        data={"sub": admin.id, "admin": True}
     )
     
     logger.info(f"Admin logged in: {admin.email}")
@@ -498,9 +498,16 @@ async def delete_video_source(
         changes={"url": video_source.url, "source_name": video_source.source_name}
     )
     
-    await db.delete(video_source)
-    await db.commit()
-    
-    logger.info(f"Admin {admin.email} deleted video source {video_id}")
+    try:
+        await db.delete(video_source)
+        await db.commit()
+        logger.info(f"Admin {admin.email} deleted video source {video_id}")
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Failed to delete video source {video_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete video source. It may be referenced by other records."
+        )
     
     return None

@@ -38,14 +38,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      await adminAPI.login({ email, password });
-      const currentAdmin = await adminAPI.getCurrentAdmin();
-      setAdmin(currentAdmin);
-      router.push('/admin/dashboard');
-    } catch (error) {
-      throw error;
-    }
+    await adminAPI.login({ email, password });
+    const currentAdmin = await adminAPI.getCurrentAdmin();
+    setAdmin(currentAdmin);
+    router.push('/admin/dashboard');
   };
 
   const logout = () => {

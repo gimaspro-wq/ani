@@ -52,13 +52,13 @@ def upgrade() -> None:
     op.create_index(op.f('ix_audit_logs_created_at'), 'audit_logs', ['created_at'], unique=False)
     
     # Add admin_modified column to anime table
-    op.add_column('anime', sa.Column('admin_modified', sa.Boolean(), nullable=False, server_default='false'))
+    op.add_column('anime', sa.Column('admin_modified', sa.Boolean(), nullable=False, server_default=sa.false()))
     
     # Add admin_modified column to episodes table
-    op.add_column('episodes', sa.Column('admin_modified', sa.Boolean(), nullable=False, server_default='false'))
+    op.add_column('episodes', sa.Column('admin_modified', sa.Boolean(), nullable=False, server_default=sa.false()))
     
     # Add admin_modified column to video_sources table
-    op.add_column('video_sources', sa.Column('admin_modified', sa.Boolean(), nullable=False, server_default='false'))
+    op.add_column('video_sources', sa.Column('admin_modified', sa.Boolean(), nullable=False, server_default=sa.false()))
 
 
 def downgrade() -> None:
