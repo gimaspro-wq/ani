@@ -95,14 +95,17 @@ pip install -r requirements.txt
 # Activate virtual environment
 source venv/bin/activate
 
-# Run parser (all pages)
-python -m parser.cli
+# Run parser in full catalog mode (all pages)
+python -m parser.cli run --mode full
 
 # Run with page limit
-python -m parser.cli --max-pages 5
+python -m parser.cli run --mode full --max-pages 5
 
 # Run with debug logging
-python -m parser.cli --debug
+python -m parser.cli run --mode full --debug
+
+# Process a single anime by Shikimori ID
+python -m parser.cli run --mode one --source-id 12345
 ```
 
 ### Running with Docker
@@ -111,11 +114,16 @@ python -m parser.cli --debug
 # Build the parser image
 docker build -t ani-parser .
 
-# Run as one-shot container
+# Run as one-shot container (full mode)
 docker run --rm \
   --env-file .env \
   -v /tmp/parser_state:/state \
-  ani-parser
+  ani-parser run --mode full
+
+# Process single anime
+docker run --rm \
+  --env-file .env \
+  ani-parser run --mode one --source-id 12345
 ```
 
 ### Cron Setup
@@ -126,11 +134,11 @@ To run the parser periodically via cron:
 # Edit crontab
 crontab -e
 
-# Add entry to run daily at 3 AM
-0 3 * * * cd /path/to/ani/parser && /path/to/venv/bin/python -m parser.cli >> /var/log/parser.log 2>&1
+# Add entry to run daily at 3 AM (full catalog mode)
+0 3 * * * cd /path/to/ani/parser && /path/to/venv/bin/python -m parser.cli run --mode full >> /var/log/parser.log 2>&1
 
 # Or with Docker
-0 3 * * * docker run --rm --env-file /path/to/ani/parser/.env -v /tmp/parser_state:/state ani-parser >> /var/log/parser.log 2>&1
+0 3 * * * docker run --rm --env-file /path/to/ani/parser/.env -v /tmp/parser_state:/state ani-parser run --mode full >> /var/log/parser.log 2>&1
 ```
 
 ## Backend Contract

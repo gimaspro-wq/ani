@@ -15,5 +15,5 @@ RUN mkdir -p /state
 # Set environment variable for state path
 ENV STATE_PATH=/state/parser_state.json
 
-# Run parser
-CMD ["python", "-m", "parser.cli"]
+# Run parser (default to full mode, can be overridden)
+CMD ["python", "-m", "parser.cli", "run", "--mode", "full"]

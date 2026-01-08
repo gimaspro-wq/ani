@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # State Management
     STATE_PATH: str = "/tmp/parser_state.json"
     
+    # Fail-fast configuration
+    MAX_CONSECUTIVE_ERRORS: int = 10  # Stop job after N consecutive errors
+    
     # Backend source name (fixed as per requirements)
     SOURCE_NAME: str = "kodik-shikimori"
     

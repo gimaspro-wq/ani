@@ -245,19 +245,22 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env and set INTERNAL_TOKEN and KODIK_API_TOKEN
 
-# Run parser
-python -m parser.cli --max-pages 5
+# Run parser (full catalog mode)
+python -m parser.cli run --mode full --max-pages 5
+
+# Or process a single anime
+python -m parser.cli run --mode one --source-id 12345
 ```
 
 ### Docker Usage
 
 ```bash
-# Run parser with Docker
+# Run parser with Docker (full mode)
 docker compose --profile parser up parser
 
 # Or manually
 docker build -t ani-parser ./parser
-docker run --rm --env-file parser/.env ani-parser
+docker run --rm --env-file parser/.env ani-parser run --mode full
 ```
 
 ### Cron Setup
@@ -266,7 +269,7 @@ To run the parser daily at 3 AM:
 
 ```bash
 # Add to crontab
-0 3 * * * cd /path/to/ani/parser && /path/to/venv/bin/python -m parser.cli
+0 3 * * * cd /path/to/ani/parser && /path/to/venv/bin/python -m parser.cli run --mode full
 ```
 
 See [Parser Documentation](parser/README.md) for detailed configuration and usage.

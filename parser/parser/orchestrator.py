@@ -74,30 +74,24 @@ class ParserOrchestrator:
                 kodik_results = await self.kodik_client.get_anime_episodes(shikimori_id)
                 
                 if kodik_results is None:
-                    logger.error(f"Failed to fetch episodes for anime {shikimori_id}")
+                    logger.error(f"Failed to fetch episodes for anime {shikimori_id}, skipping title")
                     return False
                 
                 if not kodik_results:
-                    logger.warning(f"No episodes found for anime {shikimori_id}")
-                    # Mark as processed even if no episodes
-                    self.state_manager.mark_anime_processed(
-                        source_id=source_id,
-                        title=anime_data["title"],
-                        episodes_count=0,
-                    )
-                    return True
+                    logger.warning(f"No episodes found for anime {shikimori_id}, skipping title")
+                    return False
                 
                 # Parse episodes
                 episodes_data = self.kodik_client.parse_episodes(kodik_results, shikimori_id)
                 
+                # Step 4: Validate episode count is known
                 if not episodes_data:
-                    logger.warning(f"No episodes parsed for anime {shikimori_id}")
-                    self.state_manager.mark_anime_processed(
-                        source_id=source_id,
-                        title=anime_data["title"],
-                        episodes_count=0,
+                    logger.warning(
+                        f"Episode count unknown for anime {shikimori_id}, skipping title"
                     )
-                    return True
+                    return False
+                
+                logger.info(f"Found {len(episodes_data)} episodes for anime {shikimori_id}")
                 
                 # Step 4: Import episodes to backend
                 episodes_for_import = []
@@ -121,8 +115,17 @@ class ParserOrchestrator:
                     return False
                 
                 # Step 5: Import video sources for each episode
+                video_import_errors = 0
                 for ep in episodes_data:
                     episode_source_id = generate_episode_source_id(source_id, ep["number"])
+                    
+                    # Check if episode has any translations
+                    if not ep.get("translations"):
+                        logger.warning(
+                            f"No videos for episode {ep['number']} of anime {source_id}, "
+                            "but episode remains"
+                        )
+                        continue
                     
                     # Import all translations/players for this episode
                     for idx, translation in enumerate(ep.get("translations", [])):
@@ -133,10 +136,18 @@ class ParserOrchestrator:
                             "priority": idx,  # Lower index = higher priority
                         }
                         
-                        await self.backend_client.import_video(
+                        # Skip this video on error, but continue with others
+                        success = await self.backend_client.import_video(
                             source_episode_id=episode_source_id,
                             player_data=player_data,
                         )
+                        if not success:
+                            video_import_errors += 1
+                
+                if video_import_errors > 0:
+                    logger.warning(
+                        f"Failed to import {video_import_errors} video(s) for anime {source_id}"
+                    )
                 
                 # Mark as processed
                 self.state_manager.mark_anime_processed(
@@ -171,11 +182,20 @@ class ParserOrchestrator:
         page = 1
         total_processed = 0
         total_failed = 0
+        consecutive_errors = 0
         
         try:
             while True:
                 if max_pages and page > max_pages:
                     logger.info(f"Reached max pages limit: {max_pages}")
+                    break
+                
+                # Fail-fast: Stop if too many consecutive errors
+                if consecutive_errors >= settings.MAX_CONSECUTIVE_ERRORS:
+                    logger.error(
+                        f"Stopping job: {consecutive_errors} consecutive errors "
+                        f"(threshold: {settings.MAX_CONSECUTIVE_ERRORS})"
+                    )
                     break
                 
                 logger.info(f"Fetching page {page} from Kodik")
@@ -203,16 +223,35 @@ class ParserOrchestrator:
                     tasks.append(self.process_anime(shikimori_id))
                 
                 # Wait for all tasks in this page to complete
+                # Use return_exceptions=True to prevent one failure from stopping all
                 results = await asyncio.gather(*tasks, return_exceptions=True)
                 
-                # Count results
+                # Count results and track consecutive errors
+                page_success = 0
+                page_failed = 0
                 for result in results:
                     if isinstance(result, Exception):
+                        logger.error(f"Exception during processing: {result}")
+                        page_failed += 1
                         total_failed += 1
                     elif result:
+                        page_success += 1
                         total_processed += 1
                     else:
+                        page_failed += 1
                         total_failed += 1
+                
+                # Update consecutive error counter
+                if page_success > 0:
+                    # Reset counter if any success in this page
+                    consecutive_errors = 0
+                else:
+                    # All failed in this page
+                    consecutive_errors += 1
+                    logger.warning(
+                        f"Page {page}: All {page_failed} anime failed. "
+                        f"Consecutive error pages: {consecutive_errors}"
+                    )
                 
                 # Save state after each page
                 self.state_manager.set_last_page(page)
@@ -231,6 +270,8 @@ class ParserOrchestrator:
             )
             
         except Exception as e:
+            # Log but don't crash - graceful degradation
             logger.error(f"Error during parser run: {e}", exc_info=True)
+            logger.warning("Parser run stopped due to error, but processed data is saved")
         finally:
             await self.close()
