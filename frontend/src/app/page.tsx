@@ -1,154 +1,40 @@
-"use client";
-
+import { Suspense } from "react";
 import { Footer } from "@/components/blocks/footer";
 import { Navbar } from "@/components/blocks/navbar";
-import { SpotlightCarousel } from "@/components/blocks/spotlight-carousel";
-import { Spinner } from "@/components/ui/spinner";
-import { ContinueWatching } from "@/components/home/continue-watching";
+import { AnimeGrid, AnimeGridSkeleton } from "@/components/AnimeGrid";
+import type { AnimeListItem } from "@/lib/types";
+import { getAnimeList } from "@/lib/public-api";
 
-import { orpc } from "@/lib/query/orpc";
-import { useQuery } from "@tanstack/react-query";
-import Image from "next/image";
-import Link from "next/link";
+export const revalidate = 60;
 
-type ValidAnimeItem = {
-  id: string;
-  name: string;
-  poster: string;
-  type?: string | null;
-  episodes?: { sub: number | null; dub: number | null };
-};
-
-function AnimeGrid({
-  anime,
-  isLoading,
-}: {
-  anime: ValidAnimeItem[];
-  isLoading?: boolean;
-}) {
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Spinner className="size-6 text-muted-foreground" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
-      {anime.map((item) => (
-        <Link key={item.id} href={`/anime/${item.id}`} className="group block">
-          <div className="relative aspect-3/4 rounded-lg overflow-hidden bg-foreground/5">
-            <Image
-              src={item.poster}
-              alt={item.name}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-          </div>
-          <h3 className="mt-2 text-sm text-muted-foreground line-clamp-1 group-hover:text-foreground transition-colors">
-            {item.name}
-          </h3>
-          <p className="text-xs text-muted-foreground/60">
-            {item.type} · {item.episodes?.sub ?? item.episodes?.dub ?? "?"} ep
-          </p>
-        </Link>
-      ))}
-    </div>
-  );
+async function AnimeCatalog({ promise }: { promise: Promise<AnimeListItem[]> }) {
+  const anime = await promise;
+  return <AnimeGrid anime={anime} />;
 }
 
 export default function HomePage() {
-  const { data: homeData, isLoading } = useQuery(
-    orpc.anime.getHomePage.queryOptions({}),
-  );
-
-  const spotlightAnime = (homeData?.spotlightAnimes ?? []).filter(
-    (
-      item,
-    ): item is typeof item & { id: string; name: string; poster: string } =>
-      item.id !== null && item.name !== null && item.poster !== null,
-  );
-  const trendingAnime = (homeData?.trendingAnimes ?? []).filter(
-    (
-      item,
-    ): item is typeof item & { id: string; name: string; poster: string } =>
-      item.id !== null && item.name !== null && item.poster !== null,
-  );
-  const latestEpisodes = (homeData?.latestEpisodeAnimes ?? []).filter(
-    (
-      item,
-    ): item is typeof item & { id: string; name: string; poster: string } =>
-      item.id !== null && item.name !== null && item.poster !== null,
-  );
-  const topAiring = (homeData?.topAiringAnimes ?? []).filter(
-    (
-      item,
-    ): item is typeof item & { id: string; name: string; poster: string } =>
-      item.id !== null && item.name !== null && item.poster !== null,
-  );
+  const animePromise = getAnimeList();
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      <main className="mx-auto max-w-6xl px-4 pb-12 pt-20 space-y-8">
+        <header className="space-y-2">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
+            Каталог
+          </p>
+          <h1 className="text-3xl font-semibold text-foreground lg:text-4xl">
+            Аниме
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Обновляется каждые 60 секунд. Используется публичный API.
+          </p>
+        </header>
 
-      <SpotlightCarousel anime={spotlightAnime} isLoading={isLoading} />
-
-      {/* Continue Watching */}
-      <section className="py-10 px-4">
-        <div className="mx-auto max-w-7xl">
-          <ContinueWatching />
-        </div>
-      </section>
-
-      {/* Trending */}
-      <section className="py-10 px-4">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Trending
-            </h2>
-            <Link
-              href="/browse"
-              className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-            >
-              View all
-            </Link>
-          </div>
-          <AnimeGrid anime={trendingAnime} isLoading={isLoading} />
-        </div>
-      </section>
-
-      {/* Recent */}
-      <section className="py-10 px-4">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Latest Episodes
-            </h2>
-            <Link
-              href="/browse"
-              className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-            >
-              View all
-            </Link>
-          </div>
-          <AnimeGrid anime={latestEpisodes} isLoading={isLoading} />
-        </div>
-      </section>
-
-      {/* Top Airing */}
-      <section className="py-10 px-4 border-t border-border">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-              Top Airing
-            </h2>
-          </div>
-          <AnimeGrid anime={topAiring} isLoading={isLoading} />
-        </div>
-      </section>
-
+        <Suspense fallback={<AnimeGridSkeleton />}>
+          <AnimeCatalog promise={animePromise} />
+        </Suspense>
+      </main>
       <Footer />
     </div>
   );

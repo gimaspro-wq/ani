@@ -1,22 +1,35 @@
-import type { HiAnime } from "aniwatch";
+export type AnimeStatus = "ongoing" | "completed" | "upcoming" | string;
 
-// Re-export aniwatch types for use in components
-export type ScrapedHomePage = HiAnime.ScrapedHomePage;
-export type ScrapedAnimeAboutInfo = HiAnime.ScrapedAnimeAboutInfo;
-export type ScrapedAnimeEpisodes = HiAnime.ScrapedAnimeEpisodes;
-export type ScrapedEpisodeServers = HiAnime.ScrapedEpisodeServers;
-export type ScrapedAnimeSearchResult = HiAnime.ScrapedAnimeSearchResult;
-export type ScrapedAnimeEpisodesSources = HiAnime.ScrapedAnimeEpisodesSources & {
-  anilistID: number | null;
-  malID: number | null;
-};
+export interface AnimeListItem {
+  id: string;
+  title: string;
+  slug: string;
+  description?: string | null;
+  year?: number | null;
+  status?: AnimeStatus | null;
+  poster?: string | null;
+  genres?: string[];
+  created_at?: string;
+}
 
-export type SpotlightAnime = HiAnime.SpotlightAnime;
-export type TrendingAnime = HiAnime.TrendingAnime;
-export type LatestEpisodeAnime = HiAnime.LatestEpisodeAnime;
-export type TopAiringAnime = HiAnime.TopAiringAnime;
-export type AnimeEpisode = HiAnime.AnimeEpisode;
-export type RecommendedAnime = HiAnime.RecommendedAnime;
-export type RelatedAnime = HiAnime.RelatedAnime;
-export type SubEpisode = HiAnime.SubEpisode;
-export type Anime = HiAnime.Anime;
+export interface AnimeDetail extends AnimeListItem {
+  alternative_titles?: string[];
+  updated_at?: string | null;
+}
+
+export type VideoSourceType = "iframe" | "embed" | "m3u8" | "mp4";
+
+export interface VideoSource {
+  id: string;
+  type: VideoSourceType;
+  url: string;
+  source_name: string;
+  priority: number;
+}
+
+export interface Episode {
+  id: string;
+  number: number;
+  title: string | null;
+  video_sources: VideoSource[];
+}
