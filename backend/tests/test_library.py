@@ -213,16 +213,16 @@ def test_library_requires_authentication(client: TestClient):
     
     # Try to access without token
     response = client.get("/api/v1/me/library")
-    assert response.status_code == 401
+    assert response.status_code == 403
     
     response = client.put("/api/v1/me/library/anime-123", json={"status": "watching"})
-    assert response.status_code == 401
+    assert response.status_code == 403
     
     response = client.get("/api/v1/me/progress")
-    assert response.status_code == 401
+    assert response.status_code == 403
     
     response = client.get("/api/v1/me/history")
-    assert response.status_code == 401
+    assert response.status_code == 403
 
 
 def test_multiple_providers(client: TestClient, test_user_data):

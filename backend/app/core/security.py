@@ -7,7 +7,8 @@ from passlib.context import CryptContext
 from app.core.config import settings
 
 # Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# truncate_error=False allows bcrypt to automatically truncate passwords at 72 bytes
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__truncate_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
