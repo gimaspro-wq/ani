@@ -1,532 +1,445 @@
-# API Plan and MVP Scope
+# API Plan: MVP and Future Expansion
 
-## MVP Implementation Status
+This document outlines the implemented MVP authentication API and the planned structure for future expansion. It serves as a replacement for v1.json (which is not committed to the repository).
 
-This document describes the MVP (Minimum Viable Product) authentication API that has been implemented, along with planned features that are explicitly **NOT** included in this initial version.
+---
 
-## Implemented Endpoints (v1)
+## MVP: Implemented Endpoints
 
-### Authentication Endpoints
+### Authentication & Users (Implemented)
 
 #### POST `/api/v1/auth/register`
-
-Register a new user account.
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123"
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-
-**Cookies Set:**
-- `refresh_token` (httpOnly, secure, 30 days)
-
-**Errors:**
-- `400 Bad Request` - Email already registered
-- `422 Unprocessable Entity` - Invalid email format or password too short
-
----
+Register a new user with email and password. Returns access token in JSON and sets refresh token in httpOnly cookie.
 
 #### POST `/api/v1/auth/login`
-
-Login with email and password.
-
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "securepassword123"
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-
-**Cookies Set:**
-- `refresh_token` (httpOnly, secure, 30 days)
-
-**Errors:**
-- `401 Unauthorized` - Incorrect email or password
-- `403 Forbidden` - User account disabled
-
----
+Authenticate user with email and password. Returns access token in JSON and sets refresh token in httpOnly cookie.
 
 #### POST `/api/v1/auth/refresh`
-
-Refresh access token using refresh token from cookie.
-
-**Request:**
-- Requires `refresh_token` cookie
-
-**Response:** `200 OK`
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-
-**Cookies Set:**
-- `refresh_token` (new token, httpOnly, secure, 30 days)
-
-**Note:** Implements token rotation - old refresh token is revoked.
-
-**Errors:**
-- `401 Unauthorized` - Missing, invalid, or expired refresh token
-
----
+Exchange refresh token (from cookie) for a new access token. Implements token rotation - old refresh token is revoked.
 
 #### POST `/api/v1/auth/logout`
-
-Logout and revoke refresh token.
-
-**Request:**
-- Optional `refresh_token` cookie
-
-**Response:** `200 OK`
-```json
-{
-  "message": "Logged out successfully"
-}
-```
-
-**Cookies Cleared:**
-- `refresh_token`
-
----
-
-### User Endpoints
+Revoke refresh token and clear cookie. User must re-authenticate to get new tokens.
 
 #### GET `/api/v1/users/me`
+Get current authenticated user information. Requires Bearer access token.
 
-Get current authenticated user information.
-
-**Request Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Response:** `200 OK`
-```json
-{
-  "id": 1,
-  "email": "user@example.com",
-  "is_active": true,
-  "created_at": "2024-01-01T00:00:00Z"
-}
-```
-
-**Errors:**
-- `401 Unauthorized` - Invalid or expired access token
-- `403 Forbidden` - Missing authorization header
+#### GET `/` (root)
+Health check endpoint returning API status and version.
 
 ---
 
-## Authentication Flow Examples
+## Planned: Future API Domains
 
-### Complete Registration Flow
+### 1. System & Health
 
-```
-1. POST /api/v1/auth/register
-   → Returns: access_token + refresh_token cookie
+#### GET `/api/v1/health`
+Detailed health check including database connectivity, cache status, etc.
 
-2. GET /api/v1/users/me (with access_token)
-   → Returns: user information
-```
+#### GET `/api/v1/version`
+API version information and build details.
 
-### Complete Login Flow
-
-```
-1. POST /api/v1/auth/login
-   → Returns: access_token + refresh_token cookie
-
-2. GET /api/v1/users/me (with access_token)
-   → Returns: user information
-```
-
-### Token Refresh Flow
-
-```
-1. POST /api/v1/auth/refresh (with refresh_token cookie)
-   → Returns: new access_token + new refresh_token cookie
-
-2. Use new access_token for authenticated requests
-```
-
-### Logout Flow
-
-```
-1. POST /api/v1/auth/logout (with refresh_token cookie)
-   → Revokes refresh token
-   → Clears cookie
-
-2. Future /api/v1/auth/refresh calls will fail
-```
+#### GET `/api/v1/status`
+System status and service availability.
 
 ---
 
-## NOT Implemented (By Design)
+### 2. Accounts & User Management
 
-The following features were considered in planning but are explicitly **NOT** implemented in the MVP. This is intentional to keep the initial version simple and production-ready.
+#### GET `/api/v1/users/{id}`
+Get public user profile by ID (if public profiles are implemented).
 
-### Authentication Features NOT Included
+#### PATCH `/api/v1/users/me`
+Update current user profile (name, bio, avatar URL, etc.).
 
-#### ❌ OTP (One-Time Password)
+#### POST `/api/v1/users/me/change-password`
+Change password for authenticated user. Requires current password verification.
 
-**Why not:**
-- Adds complexity (SMS/email delivery)
-- Requires additional infrastructure
-- Out of scope for MVP
+#### DELETE `/api/v1/users/me`
+Soft delete user account. May require password confirmation.
 
-**If needed later:**
-- Add `otp_secret` field to User model
-- Add `/auth/otp/enable` and `/auth/otp/verify` endpoints
-- Integrate TOTP library (pyotp)
+#### GET `/api/v1/users/me/settings`
+Get user preferences and settings.
 
----
+#### PATCH `/api/v1/users/me/settings`
+Update user preferences (theme, language, notifications, etc.).
 
-#### ❌ Social Login (OAuth)
-
-**Why not:**
-- Requires OAuth provider setup
-- Adds complexity for MVP
-- Can be added as extension
-
-**If needed later:**
-- Add OAuth client configuration
-- Add `/auth/oauth/{provider}` endpoints
-- Add social account linking table
+#### POST `/api/v1/users/me/avatar`
+Upload user avatar image. Multipart form data.
 
 ---
 
-#### ❌ Device/Session Management
+### 3. Catalog & Titles
 
-**Why not:**
-- Increases complexity
-- Refresh token rotation provides basic security
-- Not critical for MVP
+Anime/content catalog search and discovery.
 
-**If needed later:**
-- Add `sessions` table with device fingerprinting
-- Add `/auth/sessions` endpoint to list active sessions
-- Add ability to revoke specific sessions
+#### GET `/api/v1/catalog/titles`
+List and search anime titles. Query parameters:
+- `q` - search query
+- `genre` - filter by genre
+- `year` - filter by year
+- `status` - ongoing, completed, upcoming
+- `type` - TV, movie, OVA, special
+- `page`, `per_page` - pagination
 
----
+#### GET `/api/v1/catalog/titles/{id}`
+Get detailed information about a specific title including synopsis, ratings, staff, etc.
 
-#### ❌ Geographic/IP Tracking
+#### GET `/api/v1/catalog/genres`
+Get list of all available genres with counts.
 
-**Why not:**
-- Privacy concerns
-- Adds database overhead
-- Not essential for MVP
+#### GET `/api/v1/catalog/tags`
+Get list of all content tags/themes.
 
-**If needed later:**
-- Add IP address logging
-- Add GeoIP lookup
-- Add suspicious login detection
+#### GET `/api/v1/catalog/studios`
+Get list of animation studios.
 
----
+#### GET `/api/v1/catalog/trending`
+Get currently trending titles.
 
-#### ❌ Email Verification
+#### GET `/api/v1/catalog/popular`
+Get popular titles (by views, ratings, etc.).
 
-**Why not:**
-- Requires email sending infrastructure
-- Adds registration friction
-- Out of scope for MVP
-
-**If needed later:**
-- Add `email_verified` field to User model
-- Add verification token system
-- Add email sending service integration
+#### GET `/api/v1/catalog/seasonal`
+Get titles for current anime season.
 
 ---
 
-#### ❌ Password Reset
+### 4. Releases & Episodes
 
-**Why not:**
-- Requires email sending
-- Adds complexity
-- Can be added as enhancement
+#### GET `/api/v1/releases`
+List anime releases with filtering and sorting.
 
-**If needed later:**
-- Add password reset token system
-- Add `/auth/forgot-password` endpoint
-- Add `/auth/reset-password` endpoint
+#### GET `/api/v1/releases/{id}`
+Get detailed release information including episode count, air dates, etc.
 
----
+#### GET `/api/v1/releases/{id}/episodes`
+List all episodes for a release. Supports pagination.
 
-### API Features NOT Included
+#### GET `/api/v1/releases/{id}/related`
+Get related titles (sequels, prequels, spin-offs, same franchise).
 
-#### ❌ Field Include/Exclude
-
-**Why not:**
-- Premature optimization
-- Current responses are already minimal
-- Adds API complexity
-
-**If needed later:**
-- Add query parameters like `?fields=id,email`
-- Implement field filtering in serialization
+#### GET `/api/v1/releases/{id}/recommendations`
+Get recommended similar titles based on this release.
 
 ---
 
-#### ❌ Pagination
+### 5. Episodes & Streaming
 
-**Why not:**
-- No list endpoints in MVP (only `/users/me`)
-- Will be needed when adding user listing
+#### GET `/api/v1/episodes/{id}`
+Get episode metadata including title, synopsis, air date, duration.
 
-**If needed later:**
-- Add pagination parameters (`?page=1&per_page=20`)
-- Add pagination response wrapper
+#### GET `/api/v1/episodes/{id}/streams`
+Get available video streams with different qualities and translations.
 
----
+#### GET `/api/v1/episodes/{id}/sources`
+Get video source URLs (may require authentication for some sources).
 
-#### ❌ Search/Filtering
-
-**Why not:**
-- No collection endpoints yet
-- Out of scope for auth MVP
-
-**If needed later:**
-- Add query parameters for filtering
-- Add search functionality
+#### GET `/api/v1/episodes/{id}/subtitles`
+Get available subtitle tracks for episode.
 
 ---
 
-#### ❌ Rate Limiting
+### 6. User Progress & History
 
-**Why not:**
-- Can be handled at infrastructure level (nginx, Cloudflare)
-- Not critical for initial deployment
-- Adds complexity
+Track user viewing progress and history.
 
-**If needed later:**
-- Add Redis-based rate limiting
-- Add per-endpoint rate limits
-- Add rate limit headers
+#### GET `/api/v1/progress/watching`
+Get list of titles user is currently watching.
 
----
+#### GET `/api/v1/progress/completed`
+Get list of completed titles.
 
-#### ❌ API Versioning in URL
+#### GET `/api/v1/progress/{title_id}`
+Get user's progress for specific title (episodes watched, last position, etc.).
 
-**Status:** Partially implemented
-- URLs include `/api/v1/` prefix
-- No version negotiation or deprecated version support
+#### POST `/api/v1/progress/{title_id}/episodes/{episode_id}`
+Update viewing progress for an episode. Records timestamp, completion status.
 
-**If needed later:**
-- Add version header support
-- Add deprecation warnings
-- Maintain multiple API versions
+#### DELETE `/api/v1/progress/{title_id}`
+Remove title from user's progress/history.
+
+#### GET `/api/v1/history`
+Get user's viewing history with timestamps.
 
 ---
 
-### Business Features NOT Included
+### 7. Collections & Lists
 
-#### ❌ Ads Module
+User-created lists and collections.
 
-**Why not:**
-- Backend is authentication-focused
-- Ad serving is typically frontend concern
-- Out of scope
+#### GET `/api/v1/lists`
+Get all lists for authenticated user (watching, plan-to-watch, completed, dropped, etc.).
 
-**Includes (NOT implemented):**
-- VAST video ads
-- Banner ads
-- Promotional content API
-- Ad tracking endpoints
+#### POST `/api/v1/lists`
+Create a new custom list.
 
----
+#### GET `/api/v1/lists/{id}`
+Get specific list with all titles.
 
-#### ❌ User Profiles
+#### PATCH `/api/v1/lists/{id}`
+Update list metadata (name, description, privacy).
 
-**Why not:**
-- MVP only needs authentication
-- Profile data can be added later
-- Keeps user model minimal
+#### DELETE `/api/v1/lists/{id}`
+Delete a list.
 
-**If needed later:**
-- Add `profiles` table
-- Add endpoints for profile CRUD
-- Add avatar upload
+#### POST `/api/v1/lists/{id}/titles/{title_id}`
+Add title to list.
+
+#### DELETE `/api/v1/lists/{id}/titles/{title_id}`
+Remove title from list.
 
 ---
 
-#### ❌ User Preferences/Settings
+### 8. Ratings & Reviews
 
-**Why not:**
-- Frontend can store preferences locally
-- No server-side preferences needed for MVP
-- Keeps backend simple
+#### GET `/api/v1/titles/{id}/ratings`
+Get rating statistics for a title.
 
-**If needed later:**
-- Add `user_settings` table
-- Add settings API endpoints
+#### POST `/api/v1/titles/{id}/ratings`
+Submit user rating for a title (1-10 scale).
 
----
+#### GET `/api/v1/titles/{id}/reviews`
+Get user reviews for a title with pagination.
 
-#### ❌ Content/Anime Data
+#### POST `/api/v1/titles/{id}/reviews`
+Submit a review for a title.
 
-**Why not:**
-- Separate concern from authentication
-- Existing Next.js `/rpc` endpoints handle this
-- Out of scope for auth backend
+#### GET `/api/v1/reviews/{id}`
+Get specific review.
 
-**Note:** The existing oRPC anime data endpoints remain unchanged and functional.
+#### PATCH `/api/v1/reviews/{id}`
+Update user's own review.
 
----
+#### DELETE `/api/v1/reviews/{id}`
+Delete user's own review.
 
-## Future API Extensions
-
-While not in MVP, these are potential extensions that could be added:
-
-### Phase 2: Enhanced Security
-- Rate limiting
-- IP-based restrictions
-- Suspicious activity detection
-- Email verification
-- Password reset
-
-### Phase 3: User Management
-- User profiles
-- User preferences
-- Avatar uploads
-- Account deletion
-
-### Phase 4: Advanced Auth
-- OAuth providers (Google, GitHub, etc.)
-- Two-factor authentication (TOTP)
-- WebAuthn/Passkeys
-- Session management
-
-### Phase 5: Admin Features
-- User administration
-- Role-based access control (RBAC)
-- Audit logs
-- Analytics
+#### POST `/api/v1/reviews/{id}/helpful`
+Mark review as helpful.
 
 ---
 
-## API Standards
+### 9. Notifications
 
-The implemented API follows these standards:
+User notifications system.
 
-### HTTP Status Codes
+#### GET `/api/v1/notifications`
+Get user notifications (new episodes, replies, system messages).
 
-| Code | Usage |
-|------|-------|
-| `200 OK` | Successful request |
-| `201 Created` | Resource created (registration) |
-| `400 Bad Request` | Client error (duplicate email) |
-| `401 Unauthorized` | Authentication failed |
-| `403 Forbidden` | Authorization failed |
-| `422 Unprocessable Entity` | Validation error |
-| `500 Internal Server Error` | Server error |
+#### GET `/api/v1/notifications/unread`
+Get count of unread notifications.
 
-### Response Format
+#### PATCH `/api/v1/notifications/{id}/read`
+Mark notification as read.
 
-All responses are JSON:
+#### PATCH `/api/v1/notifications/read-all`
+Mark all notifications as read.
 
-**Success:**
-```json
-{
-  "field1": "value1",
-  "field2": "value2"
-}
-```
+#### DELETE `/api/v1/notifications/{id}`
+Delete notification.
 
-**Error:**
-```json
-{
-  "detail": "Error message"
-}
-```
+---
+
+### 10. Social Features
+
+#### GET `/api/v1/users/{id}/following`
+Get list of users this user follows.
+
+#### GET `/api/v1/users/{id}/followers`
+Get list of users following this user.
+
+#### POST `/api/v1/users/{id}/follow`
+Follow a user.
+
+#### DELETE `/api/v1/users/{id}/follow`
+Unfollow a user.
+
+#### GET `/api/v1/feed`
+Get activity feed from followed users.
+
+---
+
+### 11. Comments & Discussions
+
+#### GET `/api/v1/titles/{id}/comments`
+Get comments for a title.
+
+#### POST `/api/v1/titles/{id}/comments`
+Post a comment on a title.
+
+#### GET `/api/v1/episodes/{id}/comments`
+Get comments for an episode.
+
+#### POST `/api/v1/episodes/{id}/comments`
+Post a comment on an episode.
+
+#### PATCH `/api/v1/comments/{id}`
+Edit own comment.
+
+#### DELETE `/api/v1/comments/{id}`
+Delete own comment.
+
+#### POST `/api/v1/comments/{id}/replies`
+Reply to a comment.
+
+---
+
+### 12. Search
+
+Unified search across all content types.
+
+#### GET `/api/v1/search`
+Global search. Query parameters:
+- `q` - search query
+- `type` - titles, users, reviews, comments
+- `page`, `per_page` - pagination
+
+#### GET `/api/v1/search/suggestions`
+Get search suggestions/autocomplete.
+
+---
+
+### 13. Admin (Future)
+
+Administrative endpoints for content and user management.
+
+#### GET `/api/v1/admin/users`
+List all users with filtering and sorting.
+
+#### PATCH `/api/v1/admin/users/{id}`
+Update user (ban, verify, change role).
+
+#### GET `/api/v1/admin/reports`
+Get content reports (spam, inappropriate content).
+
+#### PATCH `/api/v1/admin/reports/{id}`
+Resolve or dismiss a report.
+
+#### GET `/api/v1/admin/analytics`
+Get system analytics and statistics.
+
+#### GET `/api/v1/admin/audit-logs`
+Get audit log of admin actions.
+
+---
+
+## API Design Principles
+
+### Request/Response Format
+- All endpoints accept and return JSON
+- Use standard HTTP methods (GET, POST, PATCH, DELETE)
+- Use standard HTTP status codes (200, 201, 400, 401, 404, 500)
 
 ### Authentication
+- Public endpoints: no authentication required
+- Protected endpoints: require Bearer access token
+- Admin endpoints: require admin role
 
-- Access tokens use Bearer scheme: `Authorization: Bearer <token>`
-- Refresh tokens use httpOnly cookies
-- Cookies include CORS credentials
+### Pagination
+Standard pagination for list endpoints:
+```
+?page=1&per_page=20
+```
 
-### CORS
+Response includes pagination metadata:
+```json
+{
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 100,
+    "total_pages": 5
+  }
+}
+```
 
-- Configured via `ALLOWED_ORIGINS` environment variable
-- Credentials allowed for configured origins
-- All HTTP methods allowed
+### Filtering & Sorting
+Query parameters for filtering:
+```
+?genre=action&year=2024&status=ongoing
+```
+
+Sorting:
+```
+?sort_by=rating&sort_order=desc
+```
+
+### Rate Limiting
+- Implemented at infrastructure level (nginx/Cloudflare)
+- Per-user limits for authenticated endpoints
+- Stricter limits for unauthenticated requests
+
+### Versioning
+- API version in URL: `/api/v1/`
+- Version in response headers
+- Deprecation warnings for old versions
+
+---
+
+## Implementation Phases
+
+### Phase 1: MVP (Completed) ✅
+- User authentication (register, login, logout)
+- Token management (access + refresh)
+- Get current user info
+
+### Phase 2: Core Features (Planned)
+- Catalog browsing and search
+- Episode streaming
+- User progress tracking
+- Basic lists (watching, completed)
+
+### Phase 3: Social Features (Planned)
+- Ratings and reviews
+- User profiles
+- Following/followers
+- Comments and discussions
+
+### Phase 4: Advanced Features (Planned)
+- Notifications
+- Recommendations engine
+- Advanced search
+- Social feed
+
+### Phase 5: Admin & Analytics (Planned)
+- Admin panel API
+- User management
+- Content moderation
+- Analytics and reporting
+
+---
+
+## Notes
+
+### Current Integration
+- **Frontend**: Next.js app in `frontend/` directory
+- **Anime Data**: Existing `/rpc` (oRPC + aniwatch scraper) - NOT changed
+- **Video Proxy**: Existing `/api/proxy` - NOT changed
+- **Player**: Existing player - NOT changed
+
+### Future Integration Points
+- Backend catalog API will eventually replace `/rpc` scraping
+- Video streaming will integrate with `/api/proxy`
+- Player will consume backend APIs for metadata
+
+### Excluded Features
+The following are **NOT** planned for implementation:
+- ❌ Ads modules (VAST, banners, promotions)
+- ❌ OTP/2FA authentication (out of scope for MVP)
+- ❌ Social login (OAuth) - may add later
+- ❌ Email verification - may add later
+- ❌ Password reset - may add later
+- ❌ Device/session management - may add later
+- ❌ Geographic/IP tracking
+- ❌ Field include/exclude in responses
 
 ---
 
 ## Documentation
 
-Additional documentation:
+For more details, see:
+- [Architecture](./architecture.md) - Backend structure
+- [Authentication](./auth.md) - Auth implementation details  
+- [v1 Reference](./reference-from-v1-example.md) - Original v1 plan context
 
-- **Architecture:** See `backend/docs/architecture.md`
-- **Auth Flows:** See `backend/docs/auth.md`
-- **OpenAPI:** Available at `http://localhost:8000/docs` when running
-
----
-
-## Testing
-
-Comprehensive test suite covers:
-
-✅ Registration → Get user info  
-✅ Login → Get user info  
-✅ Refresh → Get user info  
-✅ Logout → Refresh fails  
-✅ Duplicate email registration  
-✅ Invalid credentials  
-✅ Missing/invalid tokens  
-
-Run tests:
-```bash
-cd backend
-pip install -r requirements-dev.txt
-pytest
-```
-
----
-
-## Summary
-
-**What's included:**
-- ✅ User registration (email + password)
-- ✅ User login
-- ✅ JWT access tokens (30min TTL)
-- ✅ Refresh tokens in httpOnly cookies (30 day TTL)
-- ✅ Token rotation on refresh
-- ✅ Logout with token revocation
-- ✅ Get current user endpoint
-- ✅ Password hashing (bcrypt)
-- ✅ CORS support
-- ✅ Comprehensive tests
-
-**What's NOT included:**
-- ❌ OTP/2FA
-- ❌ Social login
-- ❌ Email verification
-- ❌ Password reset
-- ❌ Device/session management
-- ❌ Geographic tracking
-- ❌ Field include/exclude
-- ❌ Rate limiting (use infrastructure)
-- ❌ Ads modules
-- ❌ User profiles
-- ❌ Anime/content data (use existing `/rpc`)
-
-This MVP provides a solid, production-ready authentication foundation that can be extended as needed.
+Interactive API documentation available at `http://localhost:8000/docs` when running the backend.
