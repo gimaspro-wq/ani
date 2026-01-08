@@ -34,36 +34,61 @@ git clone https://github.com/stalkerghostzone-lab/ani.git
 cd ani
 ```
 
-#### 2. Start Backend Services
+#### 2. Configure Backend Environment
 
 ```bash
-# Start PostgreSQL and backend API
-docker-compose up -d
+cd backend
+cp .env.example .env
+
+# IMPORTANT: Edit backend/.env and set a secure SECRET_KEY
+# Generate one with: openssl rand -hex 32
+# Then update the SECRET_KEY line in backend/.env
+```
+
+See [Backend Setup Guide](backend/docs/setup.md) for detailed configuration options.
+
+#### 3. Start Backend Services
+
+```bash
+# Return to repository root
+cd ..
+
+# Start PostgreSQL and backend API (production mode)
+docker compose up -d --build
+
+# For development with hot-reload, use:
+# docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 # The backend API will be available at http://localhost:8000
 # API docs at http://localhost:8000/docs
 ```
 
-Alternatively, run backend locally:
+**Note**: Modern Docker uses `docker compose` (with a space). The legacy `docker-compose` command still works but is deprecated.
+
+Alternatively, run backend locally without Docker:
 
 ```bash
 cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# Make sure PostgreSQL is running (via docker compose or locally)
+# and backend/.env is configured
+
+alembic upgrade head
 uvicorn app.main:app --reload --port 8000
 ```
 
-#### 3. Start Frontend
+#### 4. Start Frontend
 
 ```bash
 cd frontend
 bun install
 cp .env.example .env.local
 
-# Edit .env.local and add:
-# NEXT_PUBLIC_PROXY_URL=your_proxy_url
-# NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# Optional: Edit .env.local if you need to override defaults
+# NEXT_PUBLIC_APP_URL is optional and defaults to localhost:3000
 
 bun dev
 ```
@@ -152,34 +177,44 @@ bun lint      # Run ESLint
 
 ### Backend (`backend/.env`)
 
+Create from example: `cp backend/.env.example backend/.env`
+
+**Required**:
+```bash
+# Security (CRITICAL: CHANGE IN PRODUCTION!)
+# Generate with: openssl rand -hex 32
+SECRET_KEY=your-secret-key-min-32-chars-in-production
+```
+
+**Optional** (with defaults):
 ```bash
 # App
 APP_NAME=Anirohi API
 DEBUG=true
 ENV=dev
 
-# Database
+# Database (defaults work with docker compose)
 DATABASE_URL=postgresql+asyncpg://ani_user:ani_password@postgres:5432/ani_db
 
-# Security (CHANGE IN PRODUCTION!)
-# Generate with: openssl rand -hex 32
-SECRET_KEY=your-secret-key-min-32-chars-in-production
+# JWT/Auth
 JWT_ACCESS_TTL_MINUTES=15
 REFRESH_TTL_DAYS=30
-COOKIE_SECURE=false
+COOKIE_SECURE=false  # Set to true in production with HTTPS
 
-# CORS
+# CORS (comma-separated)
 ALLOWED_ORIGINS=http://localhost:3000
 ```
 
+See [Backend Setup Guide](backend/docs/setup.md) for complete configuration details.
+
 ### Frontend (`frontend/.env.local`)
 
-```bash
-# Required
-NEXT_PUBLIC_PROXY_URL=your_m3u8proxy_worker_url
+Create from example: `cp frontend/.env.example frontend/.env.local`
 
-# Optional
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+**All variables are optional**:
+```bash
+# Override app URL if needed (defaults to window.location.origin in browser)
+# NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 ## Docker Compose Services
@@ -190,14 +225,26 @@ services:
   backend:     # FastAPI application (port 8000)
 ```
 
+**Prerequisites**: 
+- Copy `backend/.env.example` to `backend/.env` and set `SECRET_KEY`
+- Generate SECRET_KEY with: `openssl rand -hex 32`
+
 Start services:
 ```bash
-docker-compose up -d              # Start in background (runs migrations automatically)
-docker-compose logs -f backend    # View backend logs
-docker-compose down               # Stop services
+# Production mode (no hot-reload)
+docker compose up -d --build
 
-# Run migrations manually if needed:
-docker-compose exec backend alembic upgrade head
+# Development mode (with hot-reload)
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+# View backend logs
+docker compose logs -f backend
+
+# Stop services
+docker compose down
+
+# Run migrations manually if needed
+docker compose exec backend alembic upgrade head
 ```
 
 ## Contributing

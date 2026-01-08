@@ -1,3 +1,13 @@
+# Minimal pyproject.toml for pytest configuration only
+# 
+# Dependency Management:
+# This project uses requirements.txt and requirements-dev.txt as the source of truth
+# for dependency management. This file only contains pytest configuration.
+#
+# To install dependencies:
+#   pip install -r requirements.txt
+#   pip install -r requirements-dev.txt  # for development and testing
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
