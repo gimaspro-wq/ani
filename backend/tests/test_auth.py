@@ -37,7 +37,9 @@ def test_register_duplicate_email(client: TestClient, test_user_data):
     # Try to register again with same email
     response = client.post("/api/v1/auth/register", json=test_user_data)
     assert response.status_code == 400
-    assert "already registered" in response.json()["detail"].lower()
+    error_data = response.json()
+    assert "error" in error_data
+    assert "already registered" in error_data["error"]["message"].lower()
 
 
 def test_login_with_valid_credentials(client: TestClient, test_user_data):

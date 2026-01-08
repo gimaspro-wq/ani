@@ -9,7 +9,11 @@ os.environ["DEBUG"] = "true"
 os.environ["COOKIE_SECURE"] = "false"
 # Use clearly identifiable test secret key (32+ chars for validation)
 os.environ["SECRET_KEY"] = "TEST_SECRET_KEY_DO_NOT_USE_IN_PRODUCTION_32CHARS"
-os.environ["ENV"] = "dev"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
+os.environ["REDIS_URL"] = "redis://localhost:6379/15"  # Use test DB 15
+os.environ["ENV"] = "test"
+os.environ["RATE_LIMIT_ENABLED"] = "false"  # Disable rate limiting in tests
+os.environ["METRICS_ENABLED"] = "false"  # Disable metrics in tests
 
 import pytest
 from fastapi.testclient import TestClient
