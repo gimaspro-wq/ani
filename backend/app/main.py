@@ -1,31 +1,64 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.v1 import auth, users, library
 from app.core.config import settings
+from app.core.errors import AppError
+from app.core.exception_handlers import (
+    app_error_handler,
+    http_exception_handler,
+    unhandled_exception_handler,
+    validation_error_handler,
+)
+from app.core.logging_config import setup_logging
+from app.core.middleware import SecurityHeadersMiddleware, TraceIDMiddleware
+from app.core.rate_limiting import limiter, RateLimitMiddleware
+from app.infrastructure.adapters.redis_client import redis_client
+
+# Setup logging
+setup_logging(debug=settings.DEBUG)
+logger = logging.getLogger(__name__)
 
 
-class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add security headers to all responses."""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager for startup and shutdown."""
+    # Startup
+    logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION} (env={settings.ENV})")
     
-    async def dispatch(self, request: Request, call_next):
-        response: Response = await call_next(request)
-        
-        # Security headers
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        
-        # Only add HSTS header when using HTTPS (production with COOKIE_SECURE=true)
-        if settings.COOKIE_SECURE:
-            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        
-        return response
+    # Connect to Redis (skip in test mode if Redis is not available)
+    try:
+        await redis_client.connect()
+        logger.info("Redis connected successfully")
+    except Exception as e:
+        logger.warning(f"Failed to connect to Redis: {e}")
+        if settings.ENV == "production":
+            raise
+        # In dev/test, continue without Redis
+        logger.info("Continuing without Redis connection")
+    
+    # TODO: Validate Alembic migrations
+    
+    logger.info("Application startup complete")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Application shutdown initiated")
+    
+    # Disconnect Redis
+    try:
+        await redis_client.disconnect()
+    except Exception:
+        pass  # Ignore shutdown errors
+    
+    logger.info("Application shutdown complete")
 
 
 # Create FastAPI app
@@ -33,23 +66,45 @@ app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
     debug=settings.DEBUG,
-    docs_url="/docs" if settings.DEBUG else None,  # Disable docs in production
+    docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
+    lifespan=lifespan,
 )
 
-# Add security headers middleware
+# Add exception handlers
+app.add_exception_handler(AppError, app_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
+
+# Add middlewares (order matters - they are applied in reverse)
+# 1. Security headers (outermost)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# Configure CORS with strict settings
+# 2. Trace ID
+app.add_middleware(TraceIDMiddleware)
+
+# 3. Rate limiting
+if settings.RATE_LIMIT_ENABLED:
+    app.add_middleware(RateLimitMiddleware)
+    app.state.limiter = limiter
+
+# 4. CORS (innermost, closest to routes)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins_list,  # Only specific origins, no wildcards
-    allow_credentials=True,  # Required for cookies
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],  # Explicit methods only
-    allow_headers=["Content-Type", "Authorization"],  # Explicit headers only
-    expose_headers=["Content-Type"],
-    max_age=600,  # Cache preflight for 10 minutes
+    allow_origins=settings.allowed_origins_list,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization"],
+    expose_headers=["Content-Type", "X-Trace-ID"],
+    max_age=600,
 )
+
+# Setup Prometheus metrics
+if settings.METRICS_ENABLED:
+    instrumentator = Instrumentator()
+    instrumentator.instrument(app).expose(app, endpoint="/metrics")
+    logger.info("Prometheus metrics enabled at /metrics")
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
@@ -67,3 +122,4 @@ async def root():
 async def health():
     """Health check endpoint."""
     return {"status": "healthy", "version": settings.VERSION}
+
