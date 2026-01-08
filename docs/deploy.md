@@ -47,7 +47,7 @@ SECRET_KEY=<your-generated-secret-key-here>
 openssl rand -hex 32
 ```
 
-This generates a 64-character hex string (32 bytes). Copy the output and set it as your `SECRET_KEY`.
+This generates 32 random bytes, represented as a 64-character hexadecimal string. Copy the output and set it as your `SECRET_KEY`.
 
 #### Important Production Variables
 
