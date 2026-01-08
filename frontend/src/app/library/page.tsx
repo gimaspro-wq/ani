@@ -9,6 +9,7 @@ import type { LibraryStatus } from "@/lib/api/backend";
 import { Navbar } from "@/components/blocks/navbar";
 import { Footer } from "@/components/blocks/footer";
 import { Spinner } from "@/components/ui/spinner";
+import { QuickActions } from "@/components/anime/quick-actions";
 
 const STATUS_TABS: Array<{ value: LibraryStatus | "all"; label: string }> = [
   { value: "all", label: "All" },
@@ -157,44 +158,49 @@ function LibraryContent() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
               {filteredItems.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/anime/${item.title_id}`}
-                  className="group block"
-                >
-                  <div className="relative aspect-3/4 rounded-lg overflow-hidden bg-foreground/5">
-                    {/* Placeholder for poster - would need to fetch from RPC */}
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                      <svg
-                        className="w-12 h-12 opacity-30"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                      </svg>
-                    </div>
-
-                    {/* Status badge */}
-                    <div className="absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium bg-black/70 text-white capitalize">
-                      {item.status}
-                    </div>
-
-                    {/* Favorite indicator */}
-                    {item.is_favorite && (
-                      <div className="absolute top-2 right-2 p-1.5 rounded bg-black/70">
+                <div key={item.id} className="group relative">
+                  <Link
+                    href={`/anime/${item.title_id}`}
+                    className="block"
+                  >
+                    <div className="relative aspect-3/4 rounded-lg overflow-hidden bg-foreground/5">
+                      {/* Placeholder for poster - would need to fetch from RPC */}
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                         <svg
-                          className="w-4 h-4 fill-red-500 text-red-500"
-                          viewBox="0 0 24 24"
+                          className="w-12 h-12 opacity-30"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
                         >
-                          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
                         </svg>
                       </div>
-                    )}
+
+                      {/* Status badge */}
+                      <div className="absolute top-2 left-2 px-2 py-1 rounded text-xs font-medium bg-black/70 text-white capitalize">
+                        {item.status}
+                      </div>
+
+                      {/* Favorite indicator */}
+                      {item.is_favorite && (
+                        <div className="absolute top-2 right-2 p-1.5 rounded bg-black/70">
+                          <svg
+                            className="w-4 h-4 fill-red-500 text-red-500"
+                            viewBox="0 0 24 24"
+                          >
+                            <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="mt-2 text-sm text-muted-foreground line-clamp-2 group-hover:text-foreground transition-colors">
+                      {item.title_id}
+                    </h3>
+                  </Link>
+                  {/* Quick Actions - appears on hover */}
+                  <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <QuickActions titleId={item.title_id} provider={item.provider} variant="compact" />
                   </div>
-                  <h3 className="mt-2 text-sm text-muted-foreground line-clamp-2 group-hover:text-foreground transition-colors">
-                    {item.title_id}
-                  </h3>
-                </Link>
+                </div>
               ))}
             </div>
           )}
