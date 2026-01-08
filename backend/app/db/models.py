@@ -69,6 +69,32 @@ class User(Base):
     roles = relationship("Role", secondary=user_roles, back_populates="users")
 
 
+class AdminUser(Base):
+    """Admin user model for admin panel authentication."""
+    
+    __tablename__ = "admin_users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=False)
+    username = Column(String, unique=True, index=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    
+    # Relationships
+    audit_logs = relationship("AuditLog", back_populates="admin", cascade="all, delete-orphan")
+
+
 class RefreshToken(Base):
     """Refresh token model for token rotation."""
     
@@ -162,6 +188,28 @@ class UserHistory(Base):
     user = relationship("User", back_populates="history_items")
 
 
+class AuditLog(Base):
+    """Audit log for admin actions."""
+    
+    __tablename__ = "audit_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    admin_id = Column(Integer, ForeignKey("admin_users.id"), nullable=False, index=True)
+    action = Column(String, nullable=False, index=True)  # e.g., "update", "create", "delete"
+    resource_type = Column(String, nullable=False, index=True)  # e.g., "anime", "episode", "video_source"
+    resource_id = Column(String, nullable=False, index=True)  # UUID as string
+    changes = Column(Text, nullable=True)  # JSON string of changes
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+        index=True
+    )
+    
+    # Relationships
+    admin = relationship("AdminUser", back_populates="audit_logs")
+
+
 class AnimeStatus(str, enum.Enum):
     """Anime status enum."""
     ONGOING = "ongoing"
@@ -186,6 +234,7 @@ class Anime(Base):
     genres = Column(JSONEncodedList().with_variant(ARRAY(String), 'postgresql'), nullable=True)
     alternative_titles = Column(JSONEncodedList().with_variant(ARRAY(String), 'postgresql'), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
+    admin_modified = Column(Boolean, default=False, nullable=False)  # Track if admin modified this record
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -219,6 +268,7 @@ class Episode(Base):
     title = Column(String, nullable=True)
     source_episode_id = Column(String, nullable=False, index=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
+    admin_modified = Column(Boolean, default=False, nullable=False)  # Track if admin modified this record
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -254,6 +304,7 @@ class VideoSource(Base):
     source_name = Column(String, nullable=False, index=True)
     priority = Column(Integer, nullable=False, default=0, index=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
+    admin_modified = Column(Boolean, default=False, nullable=False)  # Track if admin modified this record
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
