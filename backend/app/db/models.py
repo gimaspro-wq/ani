@@ -5,6 +5,8 @@ from sqlalchemy.orm import relationship
 import enum
 
 from app.db.database import Base
+# Import RBAC association table
+from app.db.rbac_models import user_roles
 
 
 class LibraryStatus(str, enum.Enum):
@@ -41,6 +43,7 @@ class User(Base):
     library_items = relationship("UserLibraryItem", back_populates="user", cascade="all, delete-orphan")
     progress_items = relationship("UserProgress", back_populates="user", cascade="all, delete-orphan")
     history_items = relationship("UserHistory", back_populates="user", cascade="all, delete-orphan")
+    roles = relationship("Role", secondary=user_roles, back_populates="users")
 
 
 class RefreshToken(Base):
