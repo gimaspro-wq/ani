@@ -68,18 +68,20 @@ async def import_anime(
                 counter += 1
         
         if anime:
-            # Update existing anime (but don't change is_active if it was manually disabled)
+            # Update existing anime (but don't change fields if admin modified)
             logger.info(f"Updating anime: {data.title} (source: {data.source_name}/{data.source_id})")
             
-            anime.title = data.title
-            anime.slug = slug
-            anime.description = data.description
-            anime.year = data.year
-            if data.status:
-                anime.status = AnimeStatus(data.status)
-            anime.poster = data.poster
-            anime.genres = data.genres
-            anime.alternative_titles = data.alternative_titles
+            # Only update if not admin modified
+            if not anime.admin_modified:
+                anime.title = data.title
+                anime.slug = slug
+                anime.description = data.description
+                anime.year = data.year
+                if data.status:
+                    anime.status = AnimeStatus(data.status)
+                anime.poster = data.poster
+                anime.genres = data.genres
+                anime.alternative_titles = data.alternative_titles
             # Note: is_active is NOT updated - manual override preserved
             
         else:
@@ -164,12 +166,13 @@ async def import_episodes(
                 episode = ep_result.scalar_one_or_none()
                 
                 if episode:
-                    # Update existing episode
-                    episode.number = ep_data.number
-                    episode.title = ep_data.title
-                    # Set is_active based on availability (but don't override manual disable)
-                    if episode.is_active or ep_data.is_available:
-                        episode.is_active = ep_data.is_available
+                    # Update existing episode (but don't change fields if admin modified)
+                    if not episode.admin_modified:
+                        episode.number = ep_data.number
+                        episode.title = ep_data.title
+                        # Set is_active based on availability (but don't override manual disable)
+                        if episode.is_active or ep_data.is_available:
+                            episode.is_active = ep_data.is_available
                 else:
                     # Create new episode
                     episode = Episode(
@@ -251,10 +254,11 @@ async def import_video(
         video_source = vs_result.scalar_one_or_none()
         
         if video_source:
-            # Update existing video source
+            # Update existing video source (but don't change fields if admin modified)
             logger.info(f"Updating video source for episode {episode.source_episode_id}")
-            video_source.type = data.player.type
-            video_source.priority = data.player.priority
+            if not video_source.admin_modified:
+                video_source.type = data.player.type
+                video_source.priority = data.player.priority
         else:
             # Create new video source
             logger.info(f"Creating video source for episode {episode.source_episode_id}")

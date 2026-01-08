@@ -112,6 +112,7 @@ The backend is a FastAPI application providing authentication APIs.
 - ✅ **Watch progress tracking** (synced across devices)
 - ✅ **Watch history** (recent episodes watched)
 - ✅ **Multi-provider support** (ready for future data sources)
+- ✅ **Admin Panel** (content management with parser override)
 
 ### API Endpoints
 
@@ -148,6 +149,7 @@ The backend is a FastAPI application providing authentication APIs.
 - [Authentication](backend/docs/auth.md) - Auth flows, cookies, and token details
 - [API Plan](backend/docs/api-plan.md) - MVP endpoints and excluded features
 - [**Features Guide**](docs/features.md) - Library, progress, history features
+- [**Admin Panel**](ADMIN_PANEL.md) - Admin panel setup and usage guide
 
 ### Running Backend Tests
 
@@ -291,6 +293,11 @@ COOKIE_SECURE=false  # Set to true in production with HTTPS
 
 # CORS (comma-separated)
 ALLOWED_ORIGINS=http://localhost:3000
+
+# Admin Panel (for initial admin user creation)
+ADMIN_EMAIL=admin@example.com
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-this-admin-password-in-production
 ```
 
 See [Backend Setup Guide](backend/docs/setup.md) for complete configuration details.
@@ -304,6 +311,70 @@ Create from example: `cp frontend/.env.example frontend/.env.local`
 # Override app URL if needed (defaults to window.location.origin in browser)
 # NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
+
+## Admin Panel
+
+The admin panel provides a web interface for managing anime content with full control over the catalog.
+
+### Features
+
+- 🔐 Secure admin authentication (separate from user auth)
+- 📊 Dashboard with statistics and recent activity
+- 🎬 Anime management (create, edit, toggle active/inactive)
+- 📺 Episode management for each anime
+- ▶️ Video source management (multiple sources per episode)
+- 🔒 **Admin Override**: Manual changes take priority over parser updates
+- 📝 Audit logging of all admin actions
+
+### Quick Start
+
+#### 1. Create First Admin User
+
+```bash
+cd backend
+
+# Set admin credentials in .env
+export ADMIN_EMAIL=admin@example.com
+export ADMIN_USERNAME=admin
+export ADMIN_PASSWORD=YourSecurePassword123
+
+# Run the creation script
+python scripts/create_admin.py
+```
+
+Output:
+```
+✓ Admin user created successfully!
+  Email: admin@example.com
+  Username: admin
+
+You can now login to the admin panel with these credentials.
+```
+
+#### 2. Access Admin Panel
+
+1. Start backend and frontend (see Quick Start above)
+2. Navigate to http://localhost:3000/admin
+3. Login with your admin credentials
+4. You'll be redirected to the dashboard
+
+### Admin Override Mechanism
+
+When content is modified through the admin panel:
+- The `admin_modified` flag is set to `true` on the record
+- Parser updates will **NOT** overwrite admin-modified fields
+- The `is_active` flag is always protected from parser changes
+- All admin actions are logged to the `audit_logs` table
+
+This ensures administrators have full control over the content, while still allowing the parser to add new content automatically.
+
+### Documentation
+
+See [Admin Panel Guide](ADMIN_PANEL.md) for complete documentation including:
+- Detailed setup instructions
+- API reference
+- Security considerations
+- Troubleshooting guide
 
 ## Docker Compose Services
 
