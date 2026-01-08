@@ -9,16 +9,33 @@ const STORAGE_KEY_PROGRESS = "anirohi-watch-progress";
 const STORAGE_KEY_SAVED = "anirohi-saved-series";
 const IMPORT_COMPLETED_KEY = "anirohi-import-completed";
 
+interface LegacyProgress {
+  animeId: string;
+  episodeNumber: number;
+  currentTime: number;
+  duration: number;
+  updatedAt: number;
+  poster?: string;
+  name?: string;
+}
+
+interface LegacySavedSeries {
+  id: string;
+  name: string;
+  poster: string;
+  savedAt: number;
+}
+
 /**
  * Get local progress data from localStorage
  */
-function getLocalProgress() {
+function getLocalProgress(): LegacyProgress[] {
   if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem(STORAGE_KEY_PROGRESS);
     if (!stored) return [];
     const data = JSON.parse(stored);
-    return Object.values(data);
+    return Object.values(data) as LegacyProgress[];
   } catch {
     return [];
   }
@@ -27,11 +44,11 @@ function getLocalProgress() {
 /**
  * Get local saved series from localStorage
  */
-function getLocalSavedSeries() {
+function getLocalSavedSeries(): LegacySavedSeries[] {
   if (typeof window === "undefined") return [];
   try {
     const stored = localStorage.getItem(STORAGE_KEY_SAVED);
-    return stored ? JSON.parse(stored) : [];
+    return stored ? (JSON.parse(stored) as LegacySavedSeries[]) : [];
   } catch {
     return [];
   }
