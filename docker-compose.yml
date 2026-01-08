@@ -54,6 +54,24 @@ services:
       redis:
         condition: service_healthy
 
+  parser:
+    build:
+      context: ./parser
+      dockerfile: Dockerfile
+    container_name: ani-parser
+    # Run as one-shot container (use profiles to prevent auto-start)
+    profiles:
+      - parser
+    env_file:
+      - ./parser/.env
+    environment:
+      - BACKEND_BASE_URL=http://backend:8000
+    volumes:
+      - parser_state:/state
+    depends_on:
+      - backend
+
 volumes:
   postgres_data:
   redis_data:
+  parser_state:
