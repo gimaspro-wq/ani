@@ -126,23 +126,21 @@ async def verify_refresh_token(db: AsyncSession, token: str) -> User:
     Raises:
         HTTPException: If token is invalid or expired
     """
-    # Find all non-revoked tokens
+    # Find all non-revoked tokens with their users using a join
     result = await db.execute(
-        select(RefreshToken).filter(
+        select(RefreshToken, User)
+        .join(User, RefreshToken.user_id == User.id)
+        .filter(
             RefreshToken.revoked == False,
             RefreshToken.expires_at > datetime.now(timezone.utc)
         )
     )
-    tokens = result.scalars().all()
+    tokens_with_users = result.all()
     
     # Check each token hash
-    for db_token in tokens:
+    for db_token, user in tokens_with_users:
         if verify_password(token, db_token.token_hash):
-            # Found valid token, fetch user
-            result = await db.execute(select(User).filter(User.id == db_token.user_id))
-            user = result.scalar_one_or_none()
-            if user:
-                return user
+            return user
     
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
