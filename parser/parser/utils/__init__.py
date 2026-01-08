@@ -1,4 +1,5 @@
 """Utility functions for the parser."""
+import asyncio
 import random
 import time
 from typing import Optional
@@ -82,6 +83,3 @@ class RateLimiter:
             await asyncio.sleep(wait_time)
         
         self.last_request_time = time.time()
-
-
-import asyncio
