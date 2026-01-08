@@ -10,6 +10,10 @@ from app.core.config import settings
 from app.db.database import Base, get_db
 from app.main import app
 
+# Set testing environment variable
+os.environ["TESTING"] = "1"
+os.environ["DEBUG"] = "true"
+
 # Use in-memory SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
@@ -43,7 +47,8 @@ def client(db: Session) -> Generator[TestClient, None, None]:
     
     app.dependency_overrides[get_db] = override_get_db
     
-    with TestClient(app) as test_client:
+    # Disable lifespan for tests (don't create tables with production engine)
+    with TestClient(app, raise_server_exceptions=True) as test_client:
         yield test_client
     
     app.dependency_overrides.clear()

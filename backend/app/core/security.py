@@ -26,6 +26,10 @@ def create_access_token(data: dict[str, Any]) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
         minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
     )
+    # Ensure sub is string for JWT
+    if "sub" in to_encode and not isinstance(to_encode["sub"], str):
+        to_encode["sub"] = str(to_encode["sub"])
+    
     to_encode.update({"exp": expire, "type": "access"})
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
@@ -41,6 +45,12 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
         )
         if payload.get("type") != "access":
             return None
+        # Convert sub back to int
+        if "sub" in payload:
+            try:
+                payload["sub"] = int(payload["sub"])
+            except (ValueError, TypeError):
+                pass
         return payload
     except JWTError:
         return None

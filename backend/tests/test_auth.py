@@ -86,9 +86,10 @@ def test_refresh_token_flow(client: TestClient, test_user_data):
     response = client.post("/api/v1/auth/register", json=test_user_data)
     assert response.status_code == 201
     old_access_token = response.json()["access_token"]
+    refresh_cookie = response.cookies.get("refresh_token")
     
-    # 2. Refresh token
-    response = client.post("/api/v1/auth/refresh")
+    # 2. Refresh token (pass cookie explicitly for TestClient)
+    response = client.post("/api/v1/auth/refresh", cookies={"refresh_token": refresh_cookie})
     assert response.status_code == 200
     data = response.json()
     assert "access_token" in data

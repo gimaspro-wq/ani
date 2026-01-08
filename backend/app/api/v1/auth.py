@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, Cookie
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.dependencies import get_current_user
 from app.core.security import create_access_token
 from app.db.database import get_db
@@ -43,12 +44,12 @@ async def register(
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(db, user.id)
     
-    # Set refresh token cookie
+    # Set refresh token cookie (secure=False for testing, True in production)
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,  # HTTPS only in production
+        secure=not settings.DEBUG,  # Only secure in production
         samesite="lax",
         max_age=30 * 24 * 60 * 60,  # 30 days
     )
@@ -74,12 +75,12 @@ async def login(
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = create_refresh_token(db, user.id)
     
-    # Set refresh token cookie
+    # Set refresh token cookie (secure=False for testing, True in production)
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=not settings.DEBUG,
         samesite="lax",
         max_age=30 * 24 * 60 * 60,  # 30 days
     )
@@ -115,12 +116,12 @@ async def refresh(
     access_token = create_access_token(data={"sub": user.id})
     new_refresh_token = create_refresh_token(db, user.id)
     
-    # Set new refresh token cookie
+    # Set new refresh token cookie (secure=False for testing, True in production)
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=True,
+        secure=not settings.DEBUG,
         samesite="lax",
         max_age=30 * 24 * 60 * 60,  # 30 days
     )

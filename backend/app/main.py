@@ -1,3 +1,6 @@
+from contextlib import asynccontextmanager
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -5,14 +8,23 @@ from app.api.v1 import auth, users
 from app.core.config import settings
 from app.db.database import Base, engine
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan events."""
+    # Startup: Create database tables (skip in test mode)
+    if not os.getenv("TESTING"):
+        Base.metadata.create_all(bind=engine)
+    yield
+    # Shutdown: cleanup if needed
+
 
 # Create FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.VERSION,
     debug=settings.DEBUG,
+    lifespan=lifespan,
 )
 
 # Configure CORS
