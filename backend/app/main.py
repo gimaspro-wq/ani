@@ -19,6 +19,7 @@ from app.core.exception_handlers import (
 from app.core.logging_config import setup_logging
 from app.core.middleware import SecurityHeadersMiddleware, TraceIDMiddleware
 from app.core.rate_limiting import limiter, RateLimitMiddleware
+from app.core.tracing import setup_tracing
 from app.infrastructure.adapters.redis_client import redis_client
 
 # Setup logging
@@ -39,11 +40,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Failed to connect to Redis: {e}")
         if settings.ENV == "production":
+            logger.error("Redis connection is required in production")
             raise
         # In dev/test, continue without Redis
         logger.info("Continuing without Redis connection")
     
-    # TODO: Validate Alembic migrations
+    # Validate migrations in production
+    if settings.ENV == "production":
+        from app.core.migration_validator import validate_migrations
+        try:
+            if not validate_migrations(settings.DATABASE_URL):
+                raise RuntimeError(
+                    "Database migrations are not up to date. "
+                    "Run 'alembic upgrade head' before starting the application."
+                )
+        except Exception as e:
+            logger.error(f"Migration validation failed: {e}")
+            raise
     
     logger.info("Application startup complete")
     
@@ -105,6 +118,10 @@ if settings.METRICS_ENABLED:
     instrumentator = Instrumentator()
     instrumentator.instrument(app).expose(app, endpoint="/metrics")
     logger.info("Prometheus metrics enabled at /metrics")
+
+# Setup OpenTelemetry tracing
+if settings.TRACING_ENABLED:
+    setup_tracing(app)
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
