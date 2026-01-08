@@ -2,12 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { backendAPI, type Progress, type History } from "@/lib/api/backend";
-import { useWatchProgress as useLocalWatchProgress } from "./use-watch-progress";
 import { useCallback } from "react";
+import { toast } from "sonner";
 
 /**
  * Hook for server-synced progress tracking.
- * Falls back to local storage when user is not authenticated.
+ * Requires authentication - all operations are server-only.
  */
 export function useServerProgress(params?: {
   provider?: string;
@@ -15,7 +15,6 @@ export function useServerProgress(params?: {
 }) {
   const queryClient = useQueryClient();
   const isAuthenticated = backendAPI.isAuthenticated();
-  const localProgress = useLocalWatchProgress();
 
   // Query for progress items
   const { data: items = [], isLoading, error } = useQuery({
@@ -54,9 +53,13 @@ export function useServerProgress(params?: {
       queryClient.invalidateQueries({ queryKey: ['progress'] });
       queryClient.invalidateQueries({ queryKey: ['history'] });
     },
+    onError: (error) => {
+      console.error("Failed to save progress:", error);
+      toast.error("Failed to save progress. Please check your connection.");
+    },
   });
 
-  // Unified save progress function that syncs to both local and server
+  // Save progress function - server-only
   const saveProgress = useCallback(
     (
       animeId: string,
@@ -65,50 +68,45 @@ export function useServerProgress(params?: {
       duration: number,
       metadata?: { poster?: string; name?: string }
     ) => {
-      // Always save to local storage
-      localProgress.saveProgress(
-        animeId,
-        episodeNumber,
-        currentTime,
-        duration,
-        metadata
-      );
-
-      // If authenticated, also save to server
-      if (isAuthenticated) {
-        const episodeId = `${animeId}-ep-${episodeNumber}`;
-        updateMutation.mutate({
-          episodeId,
-          titleId: animeId,
-          positionSeconds: currentTime,
-          durationSeconds: duration,
-        });
+      // Only save to server if authenticated
+      if (!isAuthenticated) {
+        console.warn("Cannot save progress: user not authenticated");
+        return;
       }
+
+      const episodeId = `${animeId}-ep-${episodeNumber}`;
+      updateMutation.mutate({
+        episodeId,
+        titleId: animeId,
+        positionSeconds: currentTime,
+        durationSeconds: duration,
+      });
     },
-    [isAuthenticated, localProgress, updateMutation]
+    [isAuthenticated, updateMutation]
   );
 
-  // Get progress for a specific episode (server or local)
+  // Get progress for a specific episode (server-only)
   const getProgress = useCallback(
     (animeId: string, episodeNumber: number) => {
-      if (isAuthenticated) {
-        const episodeId = `${animeId}-ep-${episodeNumber}`;
-        const serverProgress = items.find((p) => p.episode_id === episodeId);
-        if (serverProgress) {
-          return {
-            animeId,
-            episodeNumber,
-            currentTime: serverProgress.position_seconds,
-            duration: serverProgress.duration_seconds,
-            updatedAt: new Date(serverProgress.updated_at).getTime(),
-          };
-        }
+      if (!isAuthenticated) {
+        return null;
       }
       
-      // Fall back to local progress
-      return localProgress.getProgress(animeId, episodeNumber);
+      const episodeId = `${animeId}-ep-${episodeNumber}`;
+      const serverProgress = items.find((p) => p.episode_id === episodeId);
+      if (serverProgress) {
+        return {
+          animeId,
+          episodeNumber,
+          currentTime: serverProgress.position_seconds,
+          duration: serverProgress.duration_seconds,
+          updatedAt: new Date(serverProgress.updated_at).getTime(),
+        };
+      }
+      
+      return null;
     },
-    [isAuthenticated, items, localProgress]
+    [isAuthenticated, items]
   );
 
   return {

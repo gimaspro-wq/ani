@@ -31,8 +31,10 @@ import { orpc } from "@/lib/query/orpc";
 import { getProxyUrl } from "@/lib/proxy";
 import { Spinner } from "@/components/ui/spinner";
 import { NextEpisodeCountdown } from "@/components/blocks/next-episode-countdown";
-import { useWatchProgress } from "@/hooks/use-watch-progress";
+import { useServerProgress } from "@/hooks/use-server-progress";
 import { usePlayerPreferences } from "@/hooks/use-player-preferences";
+import { backendAPI } from "@/lib/api/backend";
+import { toast } from "sonner";
 
 interface PageProps {
   params: Promise<{ id: string; episode: string }>;
@@ -147,7 +149,7 @@ export default function WatchPage({ params }: PageProps) {
   }>({});
   const [countdownForEpisode, setCountdownForEpisode] = useState<number | null>(null);
 
-  const { getProgress, saveProgress } = useWatchProgress();
+  const { getProgress, saveProgress, isAuthenticated } = useServerProgress();
   const { preferences, updatePreferences } = usePlayerPreferences();
 
   const [selectedCategory, setSelectedCategory] = useQueryState(
@@ -210,16 +212,21 @@ export default function WatchPage({ params }: PageProps) {
     const currentTime = player.currentTime;
     const duration = player.duration;
 
-    // Save progress (throttled)
+    // Save progress (throttled) - only if authenticated
     if (Math.abs(currentTime - lastSaveTimeRef.current) >= 5) {
       lastSaveTimeRef.current = currentTime;
-      saveProgress(
-        id,
-        currentEpisode,
-        currentTime,
-        duration,
-        animeInfoRef.current,
-      );
+      
+      if (isAuthenticated) {
+        saveProgress(
+          id,
+          currentEpisode,
+          currentTime,
+          duration,
+          animeInfoRef.current,
+        );
+      }
+      // Note: We silently skip saving for unauthenticated users
+      // A one-time warning could be shown on mount instead
     }
 
     // Auto-skip intro/outro
@@ -250,7 +257,7 @@ export default function WatchPage({ params }: PageProps) {
         player.currentTime = outro.end;
       }
     }
-  }, [id, currentEpisode, saveProgress, preferences.autoSkip]);
+  }, [id, currentEpisode, saveProgress, preferences.autoSkip, isAuthenticated]);
 
   // Save volume preference on change
   const onVolumeChange = useCallback(() => {
@@ -273,6 +280,22 @@ export default function WatchPage({ params }: PageProps) {
     const activeTrack = player.textTracks.selected;
     updatePreferences({ captionLanguage: activeTrack?.label ?? null });
   }, [updatePreferences]);
+
+  // Show warning if not authenticated (once per session)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Show a toast notification once
+      toast.info("Login to sync your watch progress across devices", {
+        id: "auth-warning",
+        action: {
+          label: "Login",
+          onClick: () => {
+            window.location.href = `/login?returnTo=${encodeURIComponent(window.location.pathname)}`;
+          },
+        },
+      });
+    }
+  }, [isAuthenticated]);
 
   // Reset restored flag when episode changes
   useEffect(() => {

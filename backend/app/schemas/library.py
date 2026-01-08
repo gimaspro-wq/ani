@@ -69,3 +69,40 @@ class HistoryResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# Legacy import schemas
+class LegacyProgressItem(BaseModel):
+    """Legacy progress item from localStorage."""
+    animeId: str
+    episodeNumber: int
+    currentTime: float
+    duration: float
+    updatedAt: int  # Unix timestamp in milliseconds
+    poster: Optional[str] = None
+    name: Optional[str] = None
+
+
+class LegacySavedSeries(BaseModel):
+    """Legacy saved series from localStorage."""
+    id: str
+    name: str
+    poster: str
+    savedAt: int  # Unix timestamp in milliseconds
+
+
+class LegacyImportRequest(BaseModel):
+    """Request to import legacy local data."""
+    progress: list[LegacyProgressItem] = Field(default_factory=list)
+    savedSeries: list[LegacySavedSeries] = Field(default_factory=list)
+    provider: str = "rpc"
+
+
+class LegacyImportResponse(BaseModel):
+    """Response from legacy import."""
+    success: bool
+    progress_imported: int
+    progress_skipped: int
+    library_imported: int
+    library_skipped: int
+    message: str

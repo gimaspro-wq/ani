@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useHistory } from "@/hooks/use-server-progress";
-import { useWatchProgress } from "@/hooks/use-watch-progress";
 import { backendAPI } from "@/lib/api/backend";
 import { Skeleton } from "@/components/ui/skeleton";
 import { determineResumeAction } from "@/lib/resume-logic";
@@ -22,31 +21,74 @@ interface ContinueWatchingItem {
 export function ContinueWatching() {
   const isAuthenticated = backendAPI.isAuthenticated();
   const { items: historyItems, isLoading: historyLoading } = useHistory({ limit: 50 });
-  const { getAllRecentlyWatched } = useWatchProgress();
 
-  // Merge, deduplicate, and sort watch data
+  // Convert server history to continue watching items
   const continueWatchingItems = useMemo(() => {
+    if (!isAuthenticated || !historyItems.length) return [];
+
     const itemsByTitle = new Map<string, ContinueWatchingItem>();
 
-    // Get local progress
-    const localProgress = getAllRecentlyWatched(50);
-    
-    // Add local progress to map
-    for (const progress of localProgress) {
-      const existing = itemsByTitle.get(progress.animeId);
-      // Keep the most recent one
-      if (!existing || progress.updatedAt > existing.updatedAt) {
-        itemsByTitle.set(progress.animeId, progress);
+    // Process server history
+    for (const item of historyItems) {
+      // Extract episode number from episode_id (format: "animeId-ep-N")
+      const episodeMatch = item.episode_id.match(/-ep-(\d+)$/);
+      const episodeNumber = episodeMatch ? parseInt(episodeMatch[1], 10) : 1;
+      
+      const existing = itemsByTitle.get(item.title_id);
+      const updatedAt = new Date(item.watched_at).getTime();
+      
+      // Keep the most recent episode for each title
+      if (!existing || updatedAt > existing.updatedAt) {
+        itemsByTitle.set(item.title_id, {
+          animeId: item.title_id,
+          episodeNumber,
+          currentTime: item.position_seconds || 0,
+          duration: 1440, // Default 24min episode duration
+          updatedAt,
+        });
       }
     }
 
     // Convert to array and sort by updatedAt descending (most recent first)
-    const items = Array.from(itemsByTitle.values())
+    return Array.from(itemsByTitle.values())
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 10); // Limit to 10 items
+  }, [isAuthenticated, historyItems]);
 
-    return items;
-  }, [getAllRecentlyWatched]);
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          Continue Watching
+        </h2>
+        <div className="text-center py-12 px-4 rounded-lg border border-border bg-foreground/5">
+          <svg
+            className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-30"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
+          </svg>
+          <p className="text-lg mb-2">Login to track your progress</p>
+          <p className="text-sm text-muted-foreground">
+            Your watch history will be synced across devices
+          </p>
+          <Link
+            href="/login"
+            className="mt-4 inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors"
+          >
+            Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (historyLoading) {
     return (

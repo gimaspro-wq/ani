@@ -13,7 +13,9 @@ from app.schemas.library import (
     ProgressUpdate,
     ProgressResponse,
     HistoryResponse,
-    LibraryStatus
+    LibraryStatus,
+    LegacyImportRequest,
+    LegacyImportResponse,
 )
 from app.schemas.auth import MessageResponse
 from app.services import library as library_service
@@ -231,3 +233,44 @@ async def clear_history(
         provider=provider
     )
     return {"message": f"Cleared {count} history entries"}
+
+
+@router.post("/import-legacy", response_model=LegacyImportResponse)
+async def import_legacy_data(
+    import_data: LegacyImportRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Import legacy local data (progress and saved series) to server.
+    
+    This endpoint is idempotent - it can be called multiple times safely.
+    Only imports data that is newer than existing server data.
+    
+    - **progress**: List of legacy progress items from localStorage
+    - **savedSeries**: List of legacy saved series from localStorage
+    - **provider**: Data provider (default: rpc)
+    """
+    # Convert Pydantic models to dicts for the service
+    progress_items = [item.model_dump() for item in import_data.progress]
+    saved_series = [item.model_dump() for item in import_data.savedSeries]
+    
+    result = await library_service.import_legacy_data(
+        db,
+        current_user.id,
+        progress_items,
+        saved_series,
+        provider=import_data.provider
+    )
+    
+    total_imported = result["progress_imported"] + result["library_imported"]
+    total_skipped = result["progress_skipped"] + result["library_skipped"]
+    
+    return LegacyImportResponse(
+        success=True,
+        progress_imported=result["progress_imported"],
+        progress_skipped=result["progress_skipped"],
+        library_imported=result["library_imported"],
+        library_skipped=result["library_skipped"],
+        message=f"Imported {total_imported} items, skipped {total_skipped} items (already up-to-date)"
+    )

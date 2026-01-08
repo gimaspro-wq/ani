@@ -6,7 +6,6 @@ import Image from "next/image";
 import { Navbar } from "@/components/blocks/navbar";
 import { Footer } from "@/components/blocks/footer";
 import { useHistory } from "@/hooks/use-server-progress";
-import { useWatchProgress } from "@/hooks/use-watch-progress";
 import { backendAPI } from "@/lib/api/backend";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ import { Trash2, Trash } from "lucide-react";
 import { toast } from "sonner";
 
 interface HistoryItemData {
-  id?: number;
+  id: number;
   animeId: string;
   episodeNumber: number;
   poster?: string;
@@ -29,15 +28,10 @@ interface HistoryItemData {
 export default function HistoryPage() {
   const isAuthenticated = backendAPI.isAuthenticated();
   const { items: serverHistory, isLoading, deleteEntry, clearAll, isDeleting, isClearing } = useHistory({ limit: 100 });
-  const { getAllRecentlyWatched, clearProgress: clearLocalProgress } = useWatchProgress();
   const [showClearDialog, setShowClearDialog] = useState(false);
 
-  // Get local history
-  const localHistory = getAllRecentlyWatched(100);
-
-  // For authenticated users, we show server history
-  // For guests, we show local history
-  const historyItems: HistoryItemData[] = isAuthenticated && serverHistory.length > 0
+  // Only show server history for authenticated users
+  const historyItems: HistoryItemData[] = isAuthenticated
     ? serverHistory.map(item => {
         // Extract episode number from episode_id (format: "animeId-ep-N")
         const episodeMatch = item.episode_id.match(/-ep-(\d+)$/);
@@ -52,45 +46,66 @@ export default function HistoryPage() {
           updatedAt: new Date(item.watched_at).getTime(),
         };
       })
-    : localHistory;
+    : [];
 
   const handleDeleteEntry = (item: HistoryItemData) => {
-    if (isAuthenticated && item.id) {
-      deleteEntry(item.id, {
-        onSuccess: () => {
-          toast.success("History entry removed");
-        },
-        onError: () => {
-          toast.error("Failed to remove history entry");
-        },
-      });
-    } else {
-      // For guests, clear local progress
-      clearLocalProgress(item.animeId, item.episodeNumber);
-      toast.success("History entry removed");
-    }
+    deleteEntry(item.id, {
+      onSuccess: () => {
+        toast.success("History entry removed");
+      },
+      onError: () => {
+        toast.error("Failed to remove history entry");
+      },
+    });
   };
 
   const handleClearAll = () => {
-    if (isAuthenticated) {
-      clearAll('rpc', {
-        onSuccess: () => {
-          toast.success("History cleared");
-          setShowClearDialog(false);
-        },
-        onError: () => {
-          toast.error("Failed to clear history");
-        },
-      });
-    } else {
-      // For guests, clear all local progress
-      localHistory.forEach(item => {
-        clearLocalProgress(item.animeId, item.episodeNumber);
-      });
-      toast.success("History cleared");
-      setShowClearDialog(false);
-    }
+    clearAll('rpc', {
+      onSuccess: () => {
+        toast.success("History cleared");
+        setShowClearDialog(false);
+      },
+      onError: () => {
+        toast.error("Failed to clear history");
+      },
+    });
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
+          <svg
+            className="w-16 h-16 text-muted-foreground/30 mb-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
+          </svg>
+          <h1 className="text-2xl font-heading text-foreground mb-2">
+            Login Required
+          </h1>
+          <p className="text-muted-foreground text-center mb-6">
+            Please login to access your watch history
+          </p>
+          <Link
+            href={`/login?returnTo=${encodeURIComponent("/history")}`}
+            className="px-6 py-3 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors"
+          >
+            Login
+          </Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

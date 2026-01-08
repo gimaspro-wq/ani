@@ -9,9 +9,7 @@ import { Navbar } from "@/components/blocks/navbar";
 import { Footer } from "@/components/blocks/footer";
 import { orpc } from "@/lib/query/orpc";
 import { Spinner } from "@/components/ui/spinner";
-import { useSavedSeries } from "@/hooks/use-saved-series";
-import { useWatchProgress } from "@/hooks/use-watch-progress";
-import { toast } from "sonner";
+import { useServerProgress } from "@/hooks/use-server-progress";
 import { AddToLibraryButton } from "@/components/anime/add-to-library-button";
 import { FavoriteButton } from "@/components/anime/favorite-button";
 import { EpisodeList } from "@/components/anime/episode-list";
@@ -29,9 +27,18 @@ export default function AnimeDetailPage({ params }: PageProps) {
     error,
   } = useQuery(orpc.anime.getAboutInfo.queryOptions({ input: { id } }));
 
-  const { isSaved, toggleSave } = useSavedSeries();
-  const { getLastWatchedEpisode } = useWatchProgress();
-  const lastWatched = getLastWatchedEpisode(id);
+  const { items: progressItems, isAuthenticated } = useServerProgress({ titleId: id });
+  
+  // Get the last watched episode from server progress
+  const lastWatched = isAuthenticated && progressItems.length > 0
+    ? progressItems.reduce((latest, current) => {
+        const currentUpdated = new Date(current.updated_at).getTime();
+        const latestUpdated = latest ? new Date(latest.updated_at).getTime() : 0;
+        return currentUpdated > latestUpdated ? current : latest;
+      }, progressItems[0] as typeof progressItems[0] | null)
+    : null;
+  
+  const lastWatchedEpisode = lastWatched ? parseInt(lastWatched.episode_id.match(/-ep-(\d+)$/)?.[1] || "1") : null;
 
   if (error) {
     notFound();
@@ -130,7 +137,7 @@ export default function AnimeDetailPage({ params }: PageProps) {
 
               <div className="flex flex-wrap items-center gap-3 mb-6">
                 <Link
-                  href={`/watch/${id}/${lastWatched?.episodeNumber ?? 1}`}
+                  href={`/watch/${id}/${lastWatchedEpisode ?? 1}`}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors"
                 >
                   <svg
@@ -144,38 +151,12 @@ export default function AnimeDetailPage({ params }: PageProps) {
                       clipRule="evenodd"
                     />
                   </svg>
-                  {lastWatched
-                    ? `Continue EP ${lastWatched.episodeNumber}`
+                  {lastWatchedEpisode
+                    ? `Continue EP ${lastWatchedEpisode}`
                     : "Watch"}
                 </Link>
                 <AddToLibraryButton titleId={id} titleName={info.name!} />
                 <FavoriteButton titleId={id} />
-                <button
-                  onClick={() => {
-                    const wasSaved = toggleSave({
-                      id,
-                      name: info.name!,
-                      poster: info.poster!,
-                    });
-                    toast(wasSaved ? "Added to saved" : "Removed from saved");
-                  }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-foreground/10 text-sm font-medium hover:bg-foreground/20 transition-colors"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill={isSaved(id) ? "currentColor" : "none"}
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                    />
-                  </svg>
-                  {isSaved(id) ? "Saved" : "Save"}
-                </button>
               </div>
 
               {Array.isArray(moreInfo.genres) && (
