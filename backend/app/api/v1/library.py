@@ -188,3 +188,46 @@ async def get_history(
         limit=limit
     )
     return items
+
+
+@router.delete("/history/{history_id}", response_model=MessageResponse)
+async def delete_history_entry(
+    history_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Delete a specific history entry.
+    
+    - **history_id**: History entry ID
+    """
+    deleted = await library_service.delete_history_entry(
+        db,
+        current_user.id,
+        history_id
+    )
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="History entry not found"
+        )
+    return {"message": "History entry deleted"}
+
+
+@router.delete("/history", response_model=MessageResponse)
+async def clear_history(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    provider: str = Query(default="rpc"),
+):
+    """
+    Clear all watch history for the user.
+    
+    - **provider**: Data provider (default: rpc)
+    """
+    count = await library_service.clear_user_history(
+        db,
+        current_user.id,
+        provider=provider
+    )
+    return {"message": f"Cleared {count} history entries"}
