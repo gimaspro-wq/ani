@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
+import { validateEmail, validatePassword, buildAuthUrl } from "@/lib/auth/validation";
 import { BackendAPIError } from "@/lib/api/backend";
 import { Button } from "@/components/ui/button";
 import { Field, FieldContent, FieldError, FieldLabel } from "@/components/ui/field";
@@ -33,30 +34,16 @@ function LoginForm() {
     }
   }, [isAuthenticated, authLoading, router, returnTo]);
 
-  const validateEmail = (email: string): boolean => {
-    if (!email) {
-      setEmailError("Email is required");
-      return false;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setEmailError("Please enter a valid email address");
-      return false;
-    }
-    
-    setEmailError("");
-    return true;
+  const handleValidateEmail = (email: string): boolean => {
+    const result = validateEmail(email);
+    setEmailError(result.error || "");
+    return result.isValid;
   };
 
-  const validatePassword = (password: string): boolean => {
-    if (!password) {
-      setPasswordError("Password is required");
-      return false;
-    }
-    
-    setPasswordError("");
-    return true;
+  const handleValidatePassword = (password: string): boolean => {
+    const result = validatePassword(password);
+    setPasswordError(result.error || "");
+    return result.isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,8 +51,8 @@ function LoginForm() {
     setError("");
     
     // Validate fields
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = validatePassword(password);
+    const isEmailValid = handleValidateEmail(email);
+    const isPasswordValid = handleValidatePassword(password);
     
     if (!isEmailValid || !isPasswordValid) {
       return;
@@ -143,7 +130,7 @@ function LoginForm() {
                       setEmailError("");
                       setError("");
                     }}
-                    onBlur={() => validateEmail(email)}
+                    onBlur={() => handleValidateEmail(email)}
                     disabled={isLoading}
                     className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="you@example.com"
@@ -165,7 +152,7 @@ function LoginForm() {
                       setPasswordError("");
                       setError("");
                     }}
-                    onBlur={() => validatePassword(password)}
+                    onBlur={() => handleValidatePassword(password)}
                     disabled={isLoading}
                     className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Enter your password"
@@ -195,7 +182,7 @@ function LoginForm() {
               <p className="text-sm text-muted-foreground">
                 Don&apos;t have an account?{" "}
                 <Link
-                  href={`/register${returnTo !== "/" ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+                  href={buildAuthUrl("/register", returnTo)}
                   className="text-foreground hover:underline font-medium"
                 >
                   Sign up

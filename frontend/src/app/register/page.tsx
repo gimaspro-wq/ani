@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
+import { validateEmail, validatePassword, validatePasswordMatch, buildAuthUrl } from "@/lib/auth/validation";
 import { BackendAPIError } from "@/lib/api/backend";
 import { Button } from "@/components/ui/button";
 import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -35,50 +36,22 @@ function RegisterForm() {
     }
   }, [isAuthenticated, authLoading, router, returnTo]);
 
-  const validateEmail = (email: string): boolean => {
-    if (!email) {
-      setEmailError("Email is required");
-      return false;
-    }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setEmailError("Please enter a valid email address");
-      return false;
-    }
-    
-    setEmailError("");
-    return true;
+  const handleValidateEmail = (email: string): boolean => {
+    const result = validateEmail(email);
+    setEmailError(result.error || "");
+    return result.isValid;
   };
 
-  const validatePassword = (password: string): boolean => {
-    if (!password) {
-      setPasswordError("Password is required");
-      return false;
-    }
-    
-    if (password.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
-      return false;
-    }
-    
-    setPasswordError("");
-    return true;
+  const handleValidatePassword = (password: string): boolean => {
+    const result = validatePassword(password);
+    setPasswordError(result.error || "");
+    return result.isValid;
   };
 
-  const validateConfirmPassword = (confirmPassword: string): boolean => {
-    if (!confirmPassword) {
-      setConfirmPasswordError("Please confirm your password");
-      return false;
-    }
-    
-    if (confirmPassword !== password) {
-      setConfirmPasswordError("Passwords do not match");
-      return false;
-    }
-    
-    setConfirmPasswordError("");
-    return true;
+  const handleValidateConfirmPassword = (confirmPassword: string): boolean => {
+    const result = validatePasswordMatch(password, confirmPassword);
+    setConfirmPasswordError(result.error || "");
+    return result.isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,9 +59,9 @@ function RegisterForm() {
     setError("");
     
     // Validate fields
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = validatePassword(password);
-    const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
+    const isEmailValid = handleValidateEmail(email);
+    const isPasswordValid = handleValidatePassword(password);
+    const isConfirmPasswordValid = handleValidateConfirmPassword(confirmPassword);
     
     if (!isEmailValid || !isPasswordValid || !isConfirmPasswordValid) {
       return;
@@ -166,7 +139,7 @@ function RegisterForm() {
                       setEmailError("");
                       setError("");
                     }}
-                    onBlur={() => validateEmail(email)}
+                    onBlur={() => handleValidateEmail(email)}
                     disabled={isLoading}
                     className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="you@example.com"
@@ -189,10 +162,10 @@ function RegisterForm() {
                       setError("");
                       // Re-validate confirm password if it has a value
                       if (confirmPassword) {
-                        validateConfirmPassword(confirmPassword);
+                        handleValidateConfirmPassword(confirmPassword);
                       }
                     }}
-                    onBlur={() => validatePassword(password)}
+                    onBlur={() => handleValidatePassword(password)}
                     disabled={isLoading}
                     className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="At least 6 characters"
@@ -217,7 +190,7 @@ function RegisterForm() {
                       setConfirmPasswordError("");
                       setError("");
                     }}
-                    onBlur={() => validateConfirmPassword(confirmPassword)}
+                    onBlur={() => handleValidateConfirmPassword(confirmPassword)}
                     disabled={isLoading}
                     className="w-full px-3 py-2 rounded-lg bg-background border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground/20 disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Re-enter your password"
@@ -247,7 +220,7 @@ function RegisterForm() {
               <p className="text-sm text-muted-foreground">
                 Already have an account?{" "}
                 <Link
-                  href={`/login${returnTo !== "/" ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`}
+                  href={buildAuthUrl("/login", returnTo)}
                   className="text-foreground hover:underline font-medium"
                 >
                   Sign in

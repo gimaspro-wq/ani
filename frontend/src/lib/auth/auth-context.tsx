@@ -69,7 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshUser();
         
         // Trigger merge after successful login (non-blocking)
-        triggerMerge();
+        triggerMerge().catch((error) => {
+          console.error("Merge error (non-blocking):", error);
+        });
       } catch (error) {
         // Re-throw to let the caller handle the error
         throw error;
@@ -85,7 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await refreshUser();
         
         // Trigger merge after successful registration (non-blocking)
-        triggerMerge();
+        triggerMerge().catch((error) => {
+          console.error("Merge error (non-blocking):", error);
+        });
       } catch (error) {
         // Re-throw to let the caller handle the error
         throw error;

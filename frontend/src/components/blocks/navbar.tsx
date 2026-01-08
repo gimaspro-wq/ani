@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/auth-context";
+import { buildAuthUrl } from "@/lib/auth/validation";
 import { CommandMenu } from "@/components/blocks/command-menu";
 import { GitHubIcon, SearchIcon, MenuIcon, XIcon } from "@/components/ui/icons";
 import { Kbd } from "@/components/ui/kbd";
@@ -166,12 +167,12 @@ export function Navbar() {
               ) : (
                 <div className="hidden md:flex items-center gap-2">
                   <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/login${pathname !== "/" ? `?returnTo=${encodeURIComponent(pathname)}` : ""}`}>
+                    <Link href={buildAuthUrl("/login", pathname)}>
                       Login
                     </Link>
                   </Button>
                   <Button size="sm" asChild>
-                    <Link href={`/register${pathname !== "/" ? `?returnTo=${encodeURIComponent(pathname)}` : ""}`}>
+                    <Link href={buildAuthUrl("/register", pathname)}>
                       Sign Up
                     </Link>
                   </Button>
@@ -264,7 +265,7 @@ export function Navbar() {
                     <div className="flex gap-2 px-3 py-2">
                       <Button variant="outline" size="sm" className="flex-1" asChild>
                         <Link
-                          href={`/login${pathname !== "/" ? `?returnTo=${encodeURIComponent(pathname)}` : ""}`}
+                          href={buildAuthUrl("/login", pathname)}
                           onClick={() => setIsMenuOpen(false)}
                         >
                           Login
@@ -272,7 +273,7 @@ export function Navbar() {
                       </Button>
                       <Button size="sm" className="flex-1" asChild>
                         <Link
-                          href={`/register${pathname !== "/" ? `?returnTo=${encodeURIComponent(pathname)}` : ""}`}
+                          href={buildAuthUrl("/register", pathname)}
                           onClick={() => setIsMenuOpen(false)}
                         >
                           Sign Up
