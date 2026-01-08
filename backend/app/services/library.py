@@ -219,3 +219,49 @@ async def add_to_history(
     await db.commit()
     await db.refresh(history)
     return history
+
+
+async def delete_history_entry(
+    db: AsyncSession,
+    user_id: int,
+    history_id: int
+) -> bool:
+    """Delete a specific history entry."""
+    query = select(UserHistory).where(
+        and_(
+            UserHistory.id == history_id,
+            UserHistory.user_id == user_id
+        )
+    )
+    result = await db.execute(query)
+    history = result.scalar_one_or_none()
+    
+    if not history:
+        return False
+    
+    await db.delete(history)
+    await db.commit()
+    return True
+
+
+async def clear_user_history(
+    db: AsyncSession,
+    user_id: int,
+    provider: str = "rpc"
+) -> int:
+    """Clear all history for a user. Returns number of deleted entries."""
+    query = select(UserHistory).where(
+        and_(
+            UserHistory.user_id == user_id,
+            UserHistory.provider == provider
+        )
+    )
+    result = await db.execute(query)
+    entries = result.scalars().all()
+    
+    count = len(entries)
+    for entry in entries:
+        await db.delete(entry)
+    
+    await db.commit()
+    return count

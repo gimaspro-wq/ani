@@ -129,6 +129,7 @@ export function useHistory(params?: {
   provider?: string;
   limit?: number;
 }) {
+  const queryClient = useQueryClient();
   const isAuthenticated = backendAPI.isAuthenticated();
 
   const { data: items = [], isLoading, error } = useQuery({
@@ -139,10 +140,30 @@ export function useHistory(params?: {
     gcTime: 1000 * 60 * 30, // 30 minutes
   });
 
+  // Mutation to delete a single history entry
+  const deleteMutation = useMutation({
+    mutationFn: (historyId: number) => backendAPI.deleteHistoryEntry(historyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['history'] });
+    },
+  });
+
+  // Mutation to clear all history
+  const clearMutation = useMutation({
+    mutationFn: (provider: string = 'rpc') => backendAPI.clearHistory(provider),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['history'] });
+    },
+  });
+
   return {
     items,
     isLoading,
     error,
     isAuthenticated,
+    deleteEntry: deleteMutation.mutate,
+    clearAll: clearMutation.mutate,
+    isDeleting: deleteMutation.isPending,
+    isClearing: clearMutation.isPending,
   };
 }

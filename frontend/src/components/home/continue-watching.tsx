@@ -7,6 +7,7 @@ import { useHistory } from "@/hooks/use-server-progress";
 import { useWatchProgress } from "@/hooks/use-watch-progress";
 import { backendAPI } from "@/lib/api/backend";
 import { Skeleton } from "@/components/ui/skeleton";
+import { determineResumeAction } from "@/lib/resume-logic";
 
 interface ContinueWatchingItem {
   animeId: string;
@@ -20,37 +21,32 @@ interface ContinueWatchingItem {
 
 export function ContinueWatching() {
   const isAuthenticated = backendAPI.isAuthenticated();
-  const { items: historyItems, isLoading: historyLoading } = useHistory({ limit: 10 });
+  const { items: historyItems, isLoading: historyLoading } = useHistory({ limit: 50 });
   const { getAllRecentlyWatched } = useWatchProgress();
 
-  // Merge and deduplicate watch data
+  // Merge, deduplicate, and sort watch data
   const continueWatchingItems = useMemo(() => {
-    const items: ContinueWatchingItem[] = [];
-    const seenAnime = new Set<string>();
+    const itemsByTitle = new Map<string, ContinueWatchingItem>();
 
-    if (isAuthenticated && historyItems.length > 0) {
-      // Use server history for authenticated users
-      // Note: History doesn't have progress data, so we'll skip progress bars for now
-      // In a real implementation, you'd need to also fetch progress for these items
-      for (const item of historyItems) {
-        if (!seenAnime.has(item.title_id) && items.length < 10) {
-          seenAnime.add(item.title_id);
-          // We'll show these without progress bars since history doesn't include that data
-        }
-      }
-    }
-
-    // Use local progress for guests or as fallback
-    const localProgress = getAllRecentlyWatched(10);
+    // Get local progress
+    const localProgress = getAllRecentlyWatched(50);
+    
+    // Add local progress to map
     for (const progress of localProgress) {
-      if (!seenAnime.has(progress.animeId) && items.length < 10) {
-        seenAnime.add(progress.animeId);
-        items.push(progress);
+      const existing = itemsByTitle.get(progress.animeId);
+      // Keep the most recent one
+      if (!existing || progress.updatedAt > existing.updatedAt) {
+        itemsByTitle.set(progress.animeId, progress);
       }
     }
+
+    // Convert to array and sort by updatedAt descending (most recent first)
+    const items = Array.from(itemsByTitle.values())
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, 10); // Limit to 10 items
 
     return items;
-  }, [isAuthenticated, historyItems, getAllRecentlyWatched]);
+  }, [getAllRecentlyWatched]);
 
   if (historyLoading) {
     return (
@@ -110,11 +106,20 @@ export function ContinueWatching() {
           const progressPercent = Math.round(
             (item.currentTime / item.duration) * 100
           );
+          
+          // Determine whether to resume or play next episode
+          const action = determineResumeAction({
+            animeId: item.animeId,
+            episodeNumber: item.episodeNumber,
+            currentTime: item.currentTime,
+            duration: item.duration,
+            updatedAt: item.updatedAt,
+          });
 
           return (
             <Link
               key={`${item.animeId}-${item.episodeNumber}`}
-              href={`/watch/${item.animeId}/${item.episodeNumber}`}
+              href={`/watch/${item.animeId}/${action.episodeNumber}`}
               className="group block"
             >
               <div className="relative aspect-3/4 rounded-lg overflow-hidden bg-foreground/5">
@@ -147,14 +152,21 @@ export function ContinueWatching() {
 
                 {/* Episode badge */}
                 <div className="absolute top-2 left-2 px-2 py-1 rounded bg-black/70 text-xs font-medium text-white">
-                  EP {item.episodeNumber}
+                  EP {action.episodeNumber}
                 </div>
+                
+                {/* Resume/Next indicator */}
+                {action.type === 'next' && (
+                  <div className="absolute top-2 right-2 px-2 py-1 rounded bg-cyan/90 text-xs font-medium text-white">
+                    Next
+                  </div>
+                )}
               </div>
               <h3 className="mt-2 text-sm text-muted-foreground line-clamp-1 group-hover:text-foreground transition-colors">
                 {item.name || item.animeId}
               </h3>
               <p className="text-xs text-muted-foreground/60">
-                {progressPercent}% watched
+                {action.type === 'next' ? 'Ready for next episode' : `${progressPercent}% watched`}
               </p>
             </Link>
           );

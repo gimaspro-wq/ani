@@ -214,6 +214,18 @@ class BackendAPI {
     return this.request<History[]>(`/api/v1/me/history${query ? `?${query}` : ''}`);
   }
 
+  async deleteHistoryEntry(historyId: number): Promise<{ message: string }> {
+    return this.request(`/api/v1/me/history/${historyId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async clearHistory(provider: string = 'rpc'): Promise<{ message: string }> {
+    return this.request(`/api/v1/me/history?provider=${provider}`, {
+      method: 'DELETE',
+    });
+  }
+
   setAccessToken(token: string) {
     this.accessToken = token;
     if (typeof window !== 'undefined') {
