@@ -27,28 +27,29 @@ type RecentSearch = {
   poster: string;
 };
 
+function loadRecentSearches(): RecentSearch[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error("Failed to load recent searches:", error);
+  }
+  return [];
+}
+
 export function CommandMenu() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
+  const [recentSearches, setRecentSearches] = useState<RecentSearch[]>(
+    loadRecentSearches,
+  );
   const debouncedQuery = useDebounce(query, 200);
   const router = useRouter();
 
   const { search, isReady, isBuilding } = useSearchIndex();
-
-  // Load recent searches from localStorage
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
-        if (stored) {
-          setRecentSearches(JSON.parse(stored));
-        }
-      } catch (error) {
-        console.error("Failed to load recent searches:", error);
-      }
-    }
-  }, []);
 
   // Use index search if ready, otherwise fall back to API
   const indexResults =

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQueryState, parseAsString, parseAsArrayOf } from "nuqs";
 import Image from "next/image";
 import Link from "next/link";
