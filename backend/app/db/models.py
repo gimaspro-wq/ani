@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
+import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, Index
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 import enum
 
@@ -137,3 +139,116 @@ class UserHistory(Base):
     
     # Relationship to user
     user = relationship("User", back_populates="history_items")
+
+
+class AnimeStatus(str, enum.Enum):
+    """Anime status enum."""
+    ONGOING = "ongoing"
+    COMPLETED = "completed"
+    UPCOMING = "upcoming"
+
+
+class Anime(Base):
+    """Anime model for catalog."""
+    
+    __tablename__ = "anime"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    title = Column(String, nullable=False, index=True)
+    slug = Column(String, nullable=False, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    year = Column(Integer, nullable=True, index=True)
+    status = Column(Enum(AnimeStatus), nullable=True, index=True)
+    poster = Column(String, nullable=True)
+    source_name = Column(String, nullable=False, index=True)
+    source_id = Column(String, nullable=False, index=True)
+    genres = Column(ARRAY(String), nullable=True)
+    alternative_titles = Column(ARRAY(String), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    
+    # Relationships
+    episodes = relationship("Episode", back_populates="anime", cascade="all, delete-orphan")
+    
+    # Unique constraint on source_name + source_id
+    __table_args__ = (
+        UniqueConstraint("source_name", "source_id", name="uq_anime_source"),
+        Index("idx_anime_active_title", "is_active", "title"),
+    )
+
+
+class Episode(Base):
+    """Episode model for anime episodes."""
+    
+    __tablename__ = "episodes"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    anime_id = Column(UUID(as_uuid=True), ForeignKey("anime.id", ondelete="CASCADE"), nullable=False, index=True)
+    number = Column(Integer, nullable=False, index=True)
+    title = Column(String, nullable=True)
+    source_episode_id = Column(String, nullable=False, index=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    
+    # Relationships
+    anime = relationship("Anime", back_populates="episodes")
+    video_sources = relationship("VideoSource", back_populates="episode", cascade="all, delete-orphan")
+    
+    # Unique constraint on anime_id + source_episode_id
+    __table_args__ = (
+        UniqueConstraint("anime_id", "source_episode_id", name="uq_episode_source"),
+        Index("idx_episode_anime_number", "anime_id", "number"),
+    )
+
+
+class VideoSource(Base):
+    """Video source model for episode players."""
+    
+    __tablename__ = "video_sources"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    episode_id = Column(UUID(as_uuid=True), ForeignKey("episodes.id", ondelete="CASCADE"), nullable=False, index=True)
+    type = Column(String, nullable=False)  # e.g., "iframe", "direct", etc.
+    url = Column(String, nullable=False)
+    source_name = Column(String, nullable=False, index=True)
+    priority = Column(Integer, nullable=False, default=0, index=True)
+    is_active = Column(Boolean, default=True, nullable=False, index=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+    
+    # Relationships
+    episode = relationship("Episode", back_populates="video_sources")
+    
+    __table_args__ = (
+        Index("idx_video_source_episode_priority", "episode_id", "priority"),
+    )
+
