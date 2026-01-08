@@ -7,7 +7,8 @@ from collections.abc import AsyncIterator
 os.environ["TESTING"] = "1"
 os.environ["DEBUG"] = "true"
 os.environ["COOKIE_SECURE"] = "false"
-os.environ["SECRET_KEY"] = "test-secret-key-for-testing-minimum-32-characters-long"
+# Use clearly identifiable test secret key (32+ chars for validation)
+os.environ["SECRET_KEY"] = "TEST_SECRET_KEY_DO_NOT_USE_IN_PRODUCTION_32CHARS"
 os.environ["ENV"] = "dev"
 
 import pytest
