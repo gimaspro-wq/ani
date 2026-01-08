@@ -11,9 +11,10 @@ This is a monorepo containing:
 ```
 ani/
 ├── backend/          # FastAPI authentication backend
-├── frontend/         # Next.js web application  
+├── frontend/         # Next.js web application
+├── parser/           # Python parser service (Kodik/Shikimori)
 ├── docs/             # General documentation
-├── docker-compose.yml # Docker services (backend + postgres)
+├── docker-compose.yml # Docker services (backend + postgres + parser)
 └── README.md         # This file
 ```
 
@@ -216,6 +217,62 @@ npm run build     # Build for production
 npm run start     # Start production server
 npm run lint      # Run ESLint
 ```
+
+## Parser Service
+
+The parser service imports anime data from external sources (Kodik and Shikimori) into the backend.
+
+### Features
+
+- **Dual-Source Import** — Fetches video sources from Kodik and metadata from Shikimori
+- **Rate Limiting** — Configurable requests per second with exponential backoff
+- **Idempotent** — Safe to re-run; deterministic IDs prevent duplicates
+- **Concurrent Processing** — Configurable concurrency (default: 4 requests)
+- **State Management** — Tracks progress for incremental runs
+- **Docker Support** — Run as one-shot container or cron job
+
+### Quick Start
+
+```bash
+cd parser
+
+# Install dependencies
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env and set INTERNAL_TOKEN and KODIK_API_TOKEN
+
+# Run parser (full catalog mode)
+python -m parser.cli run --mode full --max-pages 5
+
+# Or process a single anime
+python -m parser.cli run --mode one --source-id 12345
+```
+
+### Docker Usage
+
+```bash
+# Run parser with Docker (full mode)
+docker compose --profile parser up parser
+
+# Or manually
+docker build -t ani-parser ./parser
+docker run --rm --env-file parser/.env ani-parser run --mode full
+```
+
+### Cron Setup
+
+To run the parser daily at 3 AM:
+
+```bash
+# Add to crontab
+0 3 * * * cd /path/to/ani/parser && /path/to/venv/bin/python -m parser.cli run --mode full
+```
+
+See [Parser Documentation](parser/README.md) for detailed configuration and usage.
 
 ## Search & Filters
 
