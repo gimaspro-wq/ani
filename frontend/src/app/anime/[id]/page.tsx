@@ -12,6 +12,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { useSavedSeries } from "@/hooks/use-saved-series";
 import { useWatchProgress } from "@/hooks/use-watch-progress";
 import { toast } from "sonner";
+import { AddToLibraryButton } from "@/components/anime/add-to-library-button";
+import { FavoriteButton } from "@/components/anime/favorite-button";
+import { EpisodeList } from "@/components/anime/episode-list";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -125,7 +128,7 @@ export default function AnimeDetailPage({ params }: PageProps) {
                 )}
               </div>
 
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex flex-wrap items-center gap-3 mb-6">
                 <Link
                   href={`/watch/${id}/${lastWatched?.episodeNumber ?? 1}`}
                   className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors"
@@ -145,6 +148,8 @@ export default function AnimeDetailPage({ params }: PageProps) {
                     ? `Continue EP ${lastWatched.episodeNumber}`
                     : "Watch"}
                 </Link>
+                <AddToLibraryButton titleId={id} titleName={info.name!} />
+                <FavoriteButton titleId={id} />
                 <button
                   onClick={() => {
                     const wasSaved = toggleSave({
@@ -195,7 +200,7 @@ export default function AnimeDetailPage({ params }: PageProps) {
         <div className="mx-auto max-w-7xl">
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Main Content */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-8">
               {/* Synopsis */}
               <div>
                 <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
@@ -205,6 +210,9 @@ export default function AnimeDetailPage({ params }: PageProps) {
                   {info.description || "No description available."}
                 </p>
               </div>
+
+              {/* Episodes */}
+              <EpisodeList animeId={id} animeName={info.name!} />
             </div>
 
             {/* Sidebar */}
