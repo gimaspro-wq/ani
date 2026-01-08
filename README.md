@@ -156,14 +156,16 @@ bun lint      # Run ESLint
 # App
 APP_NAME=Anirohi API
 DEBUG=true
+ENV=dev
 
 # Database
-DATABASE_URL=postgresql://ani_user:ani_password@postgres:5432/ani_db
+DATABASE_URL=postgresql+asyncpg://ani_user:ani_password@postgres:5432/ani_db
 
 # Security
 SECRET_KEY=your-secret-key-change-in-production
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-REFRESH_TOKEN_EXPIRE_DAYS=30
+JWT_ACCESS_TTL_MINUTES=15
+REFRESH_TTL_DAYS=30
+COOKIE_SECURE=false
 
 # CORS
 ALLOWED_ORIGINS=http://localhost:3000
@@ -177,7 +179,6 @@ NEXT_PUBLIC_PROXY_URL=your_m3u8proxy_worker_url
 
 # Optional
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-ALLOWED_ORIGINS=http://localhost:3000,https://anirohi.xyz
 ```
 
 ## Docker Compose Services
@@ -190,9 +191,12 @@ services:
 
 Start services:
 ```bash
-docker-compose up -d      # Start in background
-docker-compose logs -f    # View logs
-docker-compose down       # Stop services
+docker-compose up -d              # Start in background (runs migrations automatically)
+docker-compose logs -f backend    # View backend logs
+docker-compose down               # Stop services
+
+# Run migrations manually if needed:
+docker-compose exec backend alembic upgrade head
 ```
 
 ## Contributing

@@ -1,10 +1,14 @@
+import asyncio
 import os
-from typing import Generator
+from typing import AsyncGenerator, Generator
+from collections.abc import AsyncIterator
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.db.database import Base, get_db
@@ -15,37 +19,46 @@ os.environ["TESTING"] = "1"
 os.environ["DEBUG"] = "true"
 os.environ["COOKIE_SECURE"] = "false"
 
-# Use SQLite for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
+# Use SQLite for testing with async
+SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+async_engine = create_async_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncTestingSessionLocal = async_sessionmaker(
+    async_engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
+)
+
+
+async def init_test_db():
+    """Initialize test database tables."""
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+
+async def drop_test_db():
+    """Drop test database tables."""
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest.fixture(scope="function", autouse=True)
+def setup_test_db():
+    """Setup and teardown test database for each test."""
+    asyncio.run(init_test_db())
+    yield
+    asyncio.run(drop_test_db())
 
 
 @pytest.fixture(scope="function")
-def db() -> Generator[Session, None, None]:
-    """Create a fresh database for each test."""
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture(scope="function")
-def client(db: Session) -> Generator[TestClient, None, None]:
-    """Create a test client with a fresh database."""
+def client() -> Generator[TestClient, None, None]:
+    """Create a test client with async database override."""
     
-    # For TestClient, we need to override with an async generator
-    async def override_get_db():
-        try:
-            yield db
-        finally:
-            pass
+    async def override_get_db() -> AsyncIterator[AsyncSession]:
+        async with AsyncTestingSessionLocal() as session:
+            yield session
     
     app.dependency_overrides[get_db] = override_get_db
     
