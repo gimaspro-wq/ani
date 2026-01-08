@@ -1,9 +1,8 @@
 import os
 from dataclasses import dataclass, field
-from typing import List
 
 
-def _split_user_agents(raw: str | None) -> List[str]:
+def _split_user_agents(raw: str | None) -> list[str]:
     if not raw:
         return []
     return [ua.strip() for ua in raw.splitlines() if ua.strip()]
@@ -24,7 +23,7 @@ class Settings:
     backoff_factor: float = field(default_factory=lambda: float(os.getenv("PARSER_BACKOFF_FACTOR", "1.0")))
     rate_limit_per_second: float = field(default_factory=lambda: float(os.getenv("PARSER_RPS", "1.0")))
     dry_run: bool = field(default_factory=lambda: os.getenv("PARSER_DRY_RUN", "0") in {"1", "true", "True"})
-    user_agents: List[str] = field(
+    user_agents: list[str] = field(
         default_factory=lambda: _split_user_agents(
             os.getenv(
                 "PARSER_USER_AGENTS",

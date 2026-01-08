@@ -52,7 +52,7 @@ class HttpClient:
         last_exc: Optional[Exception] = None
         base_headers: Dict[str, str] = (kwargs.get("headers") or {}).copy()
         base_kwargs = {key: value for key, value in kwargs.items() if key != "headers"}
-        for attempt in range(self.max_retries):
+        for attempt in range(self.max_retries + 1):
             self.rate_limiter.wait()
             headers: Dict[str, str] = base_headers.copy()
             headers.setdefault("User-Agent", next(self._ua_cycle))
