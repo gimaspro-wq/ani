@@ -11,7 +11,7 @@ import { backendAPI } from "@/lib/api/backend";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { determineResumeAction, formatRelativeTime, formatProgress } from "@/lib/resume-logic";
+import { determineResumeAction, formatRelativeTime, formatProgress, DEFAULT_EPISODE_DURATION_SECONDS } from "@/lib/resume-logic";
 import { Trash2, Trash } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,7 +48,7 @@ export default function HistoryPage() {
           animeId: item.title_id,
           episodeNumber,
           currentTime: item.position_seconds || 0,
-          duration: 1440, // Default duration since history doesn't store it
+          duration: DEFAULT_EPISODE_DURATION_SECONDS,
           updatedAt: new Date(item.watched_at).getTime(),
         };
       })
@@ -171,55 +171,78 @@ export default function HistoryPage() {
                 return (
                   <div
                     key={`${item.animeId}-${item.episodeNumber}-${index}`}
-                    className="flex gap-4 p-4 rounded-lg border border-border hover:border-foreground/30 transition-colors group"
+                    className="flex flex-col sm:flex-row gap-4 p-4 rounded-lg border border-border hover:border-foreground/30 transition-colors group"
                   >
-                    {/* Poster */}
-                    <Link
-                      href={`/anime/${item.animeId}`}
-                      className="relative w-20 sm:w-24 aspect-3/4 rounded-md overflow-hidden bg-foreground/5 shrink-0"
-                    >
-                      {item.poster ? (
-                        <Image
-                          src={item.poster}
-                          alt={item.name || item.animeId}
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                          <svg className="w-8 h-8 opacity-30" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                          </svg>
-                        </div>
-                      )}
-                    </Link>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex gap-4 flex-1 min-w-0">
+                      {/* Poster */}
                       <Link
                         href={`/anime/${item.animeId}`}
-                        className="block hover:text-foreground transition-colors"
+                        className="relative w-20 sm:w-24 aspect-3/4 rounded-md overflow-hidden bg-foreground/5 shrink-0"
                       >
-                        <h3 className="font-medium line-clamp-1">
-                          {item.name || item.animeId}
-                        </h3>
+                        {item.poster ? (
+                          <Image
+                            src={item.poster}
+                            alt={item.name || item.animeId}
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                            <svg className="w-8 h-8 opacity-30" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                            </svg>
+                          </div>
+                        )}
                       </Link>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Episode {item.episodeNumber}
-                      </p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <span>{formatProgress(item.currentTime, item.duration)}</span>
-                        <span>•</span>
-                        <span>{formatRelativeTime(item.updatedAt)}</span>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          href={`/anime/${item.animeId}`}
+                          className="block hover:text-foreground transition-colors"
+                        >
+                          <h3 className="font-medium line-clamp-1">
+                            {item.name || item.animeId}
+                          </h3>
+                        </Link>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Episode {item.episodeNumber}
+                        </p>
+                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                          <span>{formatProgress(item.currentTime, item.duration)}</span>
+                          <span>•</span>
+                          <span>{formatRelativeTime(item.updatedAt)}</span>
+                        </div>
+                      </div>
+
+                      {/* Actions - Desktop */}
+                      <div className="hidden sm:flex items-center gap-2 shrink-0">
+                        <Button
+                          asChild
+                          size="sm"
+                        >
+                          <Link href={`/watch/${item.animeId}/${action.episodeNumber}`}>
+                            {action.label}
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteEntry(item)}
+                          disabled={isDeleting}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Actions - Mobile */}
+                    <div className="flex sm:hidden items-center gap-2">
                       <Button
                         asChild
                         size="sm"
-                        className="hidden sm:flex"
+                        className="flex-1"
                       >
                         <Link href={`/watch/${item.animeId}/${action.episodeNumber}`}>
                           {action.label}
@@ -235,17 +258,6 @@ export default function HistoryPage() {
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
-
-                    {/* Mobile resume button */}
-                    <Button
-                      asChild
-                      size="sm"
-                      className="sm:hidden w-full mt-3"
-                    >
-                      <Link href={`/watch/${item.animeId}/${action.episodeNumber}`}>
-                        {action.label}
-                      </Link>
-                    </Button>
                   </div>
                 );
               })}

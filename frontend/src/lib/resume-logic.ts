@@ -25,6 +25,11 @@ export interface ResumeAction {
 const COMPLETION_THRESHOLD = 0.90;
 
 /**
+ * Default episode duration in seconds (24 minutes) when not available
+ */
+export const DEFAULT_EPISODE_DURATION_SECONDS = 1440;
+
+/**
  * Determine the best action for a user who has watch progress on an anime.
  * 
  * @param progress - The last watched episode's progress
@@ -35,6 +40,15 @@ export function determineResumeAction(
   progress: WatchProgress,
   totalEpisodes?: number
 ): ResumeAction {
+  // Guard against invalid durations
+  if (progress.duration <= 0) {
+    return {
+      type: 'resume',
+      episodeNumber: progress.episodeNumber,
+      label: `Resume Episode ${progress.episodeNumber}`,
+    };
+  }
+  
   const percentComplete = progress.currentTime / progress.duration;
   
   // If user has completed >= 90% of the episode, suggest next episode
@@ -70,6 +84,10 @@ export function determineResumeAction(
  * Get a formatted progress display string
  */
 export function formatProgress(currentTime: number, duration: number): string {
+  // Guard against invalid durations
+  if (duration <= 0) {
+    return '0% watched';
+  }
   const percent = Math.round((currentTime / duration) * 100);
   return `${percent}% watched`;
 }
