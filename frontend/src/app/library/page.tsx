@@ -54,6 +54,12 @@ function LibraryContent() {
           <p className="text-muted-foreground text-center mb-6">
             Please login to access your library
           </p>
+          <Link
+            href={`/login?returnTo=${encodeURIComponent("/library")}`}
+            className="px-6 py-3 rounded-lg bg-foreground text-background text-sm font-medium hover:bg-foreground/90 transition-colors"
+          >
+            Login
+          </Link>
         </div>
         <Footer />
       </div>

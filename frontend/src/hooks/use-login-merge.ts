@@ -57,9 +57,15 @@ export function useLoginMerge() {
           { id: "merge-toast" }
         );
       } else {
-        toast.warning(
-          `Partially synced: ${result.progressCount} progress, ${result.libraryCount} library. ${result.errors.length} errors occurred.`,
-          { id: "merge-toast" }
+        toast.error(
+          `Sync completed with errors. ${result.progressCount} progress and ${result.libraryCount} library items synced.`,
+          { 
+            id: "merge-toast",
+            action: {
+              label: "Retry",
+              onClick: () => triggerMerge(),
+            },
+          }
         );
         console.error("Merge errors:", result.errors);
       }
@@ -70,8 +76,12 @@ export function useLoginMerge() {
       queryClient.invalidateQueries({ queryKey: ["history"] });
     } catch (error) {
       console.error("Merge failed:", error);
-      toast.error("Failed to sync your data. Please try again later.", {
+      toast.error("Failed to sync your data.", {
         id: "merge-toast",
+        action: {
+          label: "Retry",
+          onClick: () => triggerMerge(),
+        },
       });
     } finally {
       setIsMerging(false);
