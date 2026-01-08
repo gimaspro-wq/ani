@@ -108,6 +108,10 @@ The backend is a FastAPI application providing authentication APIs.
 - ✅ Password hashing with bcrypt
 - ✅ CORS support
 - ✅ Comprehensive test suite
+- ✅ **User library management** (watching, planned, completed, dropped)
+- ✅ **Watch progress tracking** (synced across devices)
+- ✅ **Watch history** (recent episodes watched)
+- ✅ **Multi-provider support** (ready for future data sources)
 
 ### API Endpoints
 
@@ -118,6 +122,12 @@ The backend is a FastAPI application providing authentication APIs.
 | `/api/v1/auth/refresh` | POST | Refresh access token |
 | `/api/v1/auth/logout` | POST | Logout and revoke tokens |
 | `/api/v1/users/me` | GET | Get current user info |
+| `/api/v1/me/library` | GET | Get user's library items |
+| `/api/v1/me/library/{title_id}` | PUT | Add/update library item |
+| `/api/v1/me/library/{title_id}` | DELETE | Remove library item |
+| `/api/v1/me/progress` | GET | Get watch progress |
+| `/api/v1/me/progress/{episode_id}` | PUT | Update episode progress |
+| `/api/v1/me/history` | GET | Get watch history |
 | `/docs` | GET | Interactive API documentation |
 
 ### Backend Documentation
@@ -125,6 +135,7 @@ The backend is a FastAPI application providing authentication APIs.
 - [Architecture](backend/docs/architecture.md) - Backend structure and design decisions
 - [Authentication](backend/docs/auth.md) - Auth flows, cookies, and token details
 - [API Plan](backend/docs/api-plan.md) - MVP endpoints and excluded features
+- [**Features Guide**](docs/features.md) - Library, progress, history features
 
 ### Running Backend Tests
 
@@ -132,6 +143,21 @@ The backend is a FastAPI application providing authentication APIs.
 cd backend
 pip install -r requirements-dev.txt
 pytest -v
+```
+
+### Running Database Migrations
+
+After pulling updates, run migrations to update the database schema:
+
+```bash
+cd backend
+
+# If using Docker:
+docker compose exec backend alembic upgrade head
+
+# If running locally:
+source venv/bin/activate
+alembic upgrade head
 ```
 
 ## Frontend
@@ -145,7 +171,8 @@ The frontend is a Next.js 16 application with React 19.
 - **Trending** — Stay updated with currently popular anime
 - **Schedule** — Track upcoming episode releases
 - **PWA Support** — Install as a native app on any device
-- **Watch Progress** — Track episode progress locally
+- **Watch Progress** — Track episode progress (local + server-synced when logged in)
+- **Library Management** — Organize anime by status (watching, planned, completed, dropped)
 - **Saved Series** — Save favorite anime
 
 ### Tech Stack
@@ -162,6 +189,7 @@ The frontend is a Next.js 16 application with React 19.
 
 - [Platform](docs/platform.md) - UI screens, components, user flows, features
 - [Architecture](docs/architecture.md) - App startup, storage, data lifecycle, technical flows
+- [**Features Guide**](docs/features.md) - Library, progress, history features
 
 ### Commands
 
