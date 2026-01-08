@@ -59,9 +59,6 @@ function AnimeGrid({
 }
 
 export default function HomePage() {
-  const { getAllRecentlyWatched } = useWatchProgress();
-  const recentlyWatched = getAllRecentlyWatched(6);
-
   const { data: homeData, isLoading } = useQuery(
     orpc.anime.getHomePage.queryOptions({}),
   );

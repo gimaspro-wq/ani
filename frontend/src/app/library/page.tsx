@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
@@ -18,7 +18,7 @@ const STATUS_TABS: Array<{ value: LibraryStatus | "all"; label: string }> = [
   { value: "dropped", label: "Dropped" },
 ];
 
-export default function LibraryPage() {
+function LibraryContent() {
   const [status, setStatus] = useQueryState(
     "status",
     parseAsStringLiteral(["all", "watching", "planned", "completed", "dropped"] as const).withDefault("all")
@@ -197,5 +197,21 @@ export default function LibraryPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Spinner className="size-8 text-muted-foreground" />
+        </div>
+        <Footer />
+      </div>
+    }>
+      <LibraryContent />
+    </Suspense>
   );
 }
