@@ -34,6 +34,12 @@ export function Navbar() {
                   Browse
                 </Link>
                 <Link
+                  href="/library"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Library
+                </Link>
+                <Link
                   href="/schedule"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -122,6 +128,13 @@ export function Navbar() {
                 className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
               >
                 Browse
+              </Link>
+              <Link
+                href="/library"
+                onClick={() => setIsMenuOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+              >
+                Library
               </Link>
               <Link
                 href="/schedule"
