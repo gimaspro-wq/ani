@@ -144,6 +144,7 @@ export function SpotlightCarousel({
               <button
                 key={index}
                 onClick={() => scrollTo(index)}
+                aria-label={`Go to slide ${index + 1}`}
                 className={`w-1.5 h-1.5 rounded-full transition-all ${
                   index === current ? "bg-foreground w-4" : "bg-foreground/40"
                 }`}

@@ -18,6 +18,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL || "https://anirohi.com"
+  ),
   title: "Anirohi - Stream Anime Free",
   description:
     "Watch your favorite anime series and movies in HD quality. Stream the latest episodes and discover new shows.",
@@ -33,6 +36,7 @@ export const metadata: Metadata = {
     description:
       "Watch your favorite anime series and movies in HD quality. Stream the latest episodes and discover new shows.",
     type: "website",
+    siteName: "Anirohi",
   },
   twitter: {
     card: "summary_large_image",

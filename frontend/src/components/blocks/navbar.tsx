@@ -143,7 +143,10 @@ export function Navbar() {
               ) : isAuthenticated && user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="flex items-center gap-2 p-1 rounded-lg hover:bg-foreground/5 transition-colors">
+                    <button
+                      className="flex items-center gap-2 p-1 rounded-lg hover:bg-foreground/5 transition-colors"
+                      aria-label="User menu"
+                    >
                       <UserAvatar email={user.email} />
                     </button>
                   </DropdownMenuTrigger>
