@@ -97,8 +97,6 @@ export function useLoginMerge() {
 
     if (!hasLocalData) {
       console.log("No local data to merge");
-      // Mark as completed anyway to prevent future checks
-      localStorage.setItem(IMPORT_COMPLETED_KEY, "true");
       return;
     }
 

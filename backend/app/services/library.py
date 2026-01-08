@@ -1,6 +1,7 @@
 """Library, progress, and history service functions."""
 from datetime import datetime, timezone
 from typing import List, Optional
+import logging
 
 from sqlalchemy import and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +9,8 @@ from sqlalchemy.future import select
 from fastapi import HTTPException, status
 
 from app.db.models import UserLibraryItem, UserProgress, UserHistory, LibraryStatus
+
+logger = logging.getLogger(__name__)
 
 
 # Library services
@@ -385,7 +388,7 @@ async def import_legacy_data(
                     history.watched_at = legacy_updated_at
         except Exception as e:
             # Log error but continue processing
-            print(f"Error importing progress item: {e}")
+            logger.error(f"Error importing progress item: {e}", exc_info=True)
             progress_skipped += 1
     
     # Import saved series as library items (with "planned" status)
@@ -430,7 +433,7 @@ async def import_legacy_data(
                 library_imported += 1
         except Exception as e:
             # Log error but continue processing
-            print(f"Error importing library item: {e}")
+            logger.error(f"Error importing library item: {e}", exc_info=True)
             library_skipped += 1
     
     await db.commit()
