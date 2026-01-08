@@ -13,8 +13,9 @@ from app.main import app
 # Set testing environment variable
 os.environ["TESTING"] = "1"
 os.environ["DEBUG"] = "true"
+os.environ["COOKIE_SECURE"] = "false"
 
-# Use in-memory SQLite for testing
+# Use SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
 engine = create_engine(
@@ -39,7 +40,8 @@ def db() -> Generator[Session, None, None]:
 def client(db: Session) -> Generator[TestClient, None, None]:
     """Create a test client with a fresh database."""
     
-    def override_get_db():
+    # For TestClient, we need to override with an async generator
+    async def override_get_db():
         try:
             yield db
         finally:
@@ -47,7 +49,6 @@ def client(db: Session) -> Generator[TestClient, None, None]:
     
     app.dependency_overrides[get_db] = override_get_db
     
-    # Disable lifespan for tests (don't create tables with production engine)
     with TestClient(app, raise_server_exceptions=True) as test_client:
         yield test_client
     

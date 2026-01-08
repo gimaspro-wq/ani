@@ -24,7 +24,7 @@ def create_access_token(data: dict[str, Any]) -> str:
     """Create a JWT access token."""
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        minutes=settings.JWT_ACCESS_TTL_MINUTES
     )
     # Ensure sub is string for JWT
     if "sub" in to_encode and not isinstance(to_encode["sub"], str):

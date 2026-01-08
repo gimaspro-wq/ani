@@ -8,15 +8,17 @@ class Settings(BaseSettings):
     APP_NAME: str = "Anirohi API"
     VERSION: str = "1.0.0"
     DEBUG: bool = False
+    ENV: str = "dev"
     
     # Database
-    DATABASE_URL: str = "postgresql://ani_user:ani_password@localhost:5432/ani_db"
+    DATABASE_URL: str = "postgresql+asyncpg://ani_user:ani_password@localhost:5432/ani_db"
     
     # Security
     SECRET_KEY: str = "your-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+    JWT_ACCESS_TTL_MINUTES: int = 15
+    REFRESH_TTL_DAYS: int = 30
+    COOKIE_SECURE: bool = False
     
     # CORS
     ALLOWED_ORIGINS: str = "http://localhost:3000"

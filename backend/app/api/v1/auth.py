@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, Cookie
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.dependencies import get_current_user
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(
     user_data: UserCreate,
     response: Response,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Register a new user.
@@ -38,20 +38,21 @@ async def register(
     Returns access token in response body and sets refresh token in httpOnly cookie.
     """
     # Create user
-    user = create_user(db, user_data)
+    user = await create_user(db, user_data)
     
     # Create tokens
     access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(db, user.id)
+    refresh_token = await create_refresh_token(db, user.id)
     
-    # Set refresh token cookie (secure=False for testing, True in production)
+    # Set refresh token cookie with proper flags
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=not settings.DEBUG,  # Only secure in production
+        secure=settings.COOKIE_SECURE,
         samesite="lax",
-        max_age=30 * 24 * 60 * 60,  # 30 days
+        path="/",
+        max_age=settings.REFRESH_TTL_DAYS * 24 * 60 * 60,
     )
     
     return TokenResponse(access_token=access_token)
@@ -61,7 +62,7 @@ async def register(
 async def login(
     login_data: LoginRequest,
     response: Response,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
     Login with email and password.
@@ -69,20 +70,21 @@ async def login(
     Returns access token in response body and sets refresh token in httpOnly cookie.
     """
     # Authenticate user
-    user = authenticate_user(db, login_data.email, login_data.password)
+    user = await authenticate_user(db, login_data.email, login_data.password)
     
     # Create tokens
     access_token = create_access_token(data={"sub": user.id})
-    refresh_token = create_refresh_token(db, user.id)
+    refresh_token = await create_refresh_token(db, user.id)
     
-    # Set refresh token cookie (secure=False for testing, True in production)
+    # Set refresh token cookie with proper flags
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=not settings.DEBUG,
+        secure=settings.COOKIE_SECURE,
         samesite="lax",
-        max_age=30 * 24 * 60 * 60,  # 30 days
+        path="/",
+        max_age=settings.REFRESH_TTL_DAYS * 24 * 60 * 60,
     )
     
     return TokenResponse(access_token=access_token)
@@ -92,7 +94,7 @@ async def login(
 async def refresh(
     response: Response,
     refresh_token: Annotated[str | None, Cookie()] = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Refresh access token using refresh token from cookie.
@@ -107,23 +109,24 @@ async def refresh(
         )
     
     # Verify refresh token and get user
-    user = verify_refresh_token(db, refresh_token)
+    user = await verify_refresh_token(db, refresh_token)
     
-    # Revoke old refresh token
-    revoke_refresh_token(db, refresh_token)
+    # Revoke old refresh token (rotation)
+    await revoke_refresh_token(db, refresh_token)
     
     # Create new tokens
     access_token = create_access_token(data={"sub": user.id})
-    new_refresh_token = create_refresh_token(db, user.id)
+    new_refresh_token = await create_refresh_token(db, user.id)
     
-    # Set new refresh token cookie (secure=False for testing, True in production)
+    # Set new refresh token cookie with proper flags
     response.set_cookie(
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=not settings.DEBUG,
+        secure=settings.COOKIE_SECURE,
         samesite="lax",
-        max_age=30 * 24 * 60 * 60,  # 30 days
+        path="/",
+        max_age=settings.REFRESH_TTL_DAYS * 24 * 60 * 60,
     )
     
     return TokenResponse(access_token=access_token)
@@ -133,16 +136,16 @@ async def refresh(
 async def logout(
     response: Response,
     refresh_token: Annotated[str | None, Cookie()] = None,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Logout user by revoking refresh token and clearing cookie.
     """
     # Revoke refresh token if present
     if refresh_token:
-        revoke_refresh_token(db, refresh_token)
+        await revoke_refresh_token(db, refresh_token)
     
     # Clear refresh token cookie
-    response.delete_cookie(key="refresh_token")
+    response.delete_cookie(key="refresh_token", path="/")
     
     return MessageResponse(message="Logged out successfully")
