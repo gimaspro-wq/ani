@@ -43,7 +43,7 @@ class BackendAPIError extends Error {
   constructor(
     message: string,
     public status: number,
-    public data?: any
+    public data?: Record<string, unknown>
   ) {
     super(message);
     this.name = 'BackendAPIError';
@@ -132,6 +132,10 @@ class BackendAPI {
     } finally {
       this.clearAccessToken();
     }
+  }
+
+  async getCurrentUser(): Promise<{ id: number; email: string; is_active: boolean; created_at: string }> {
+    return this.request('/api/v1/users/me');
   }
 
   async getLibrary(params?: {

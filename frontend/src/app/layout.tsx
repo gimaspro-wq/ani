@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { QueryProvider } from "@/lib/query/provider";
+import { AuthProvider } from "@/lib/auth/auth-context";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 // Using system fonts as fallback to avoid network dependency
@@ -57,7 +59,10 @@ export default function RootLayout({
         )}
         <NuqsAdapter>
           <QueryProvider>
-            <div className="pt-[env(safe-area-inset-top)]">{children}</div>
+            <AuthProvider>
+              <div className="pt-[env(safe-area-inset-top)]">{children}</div>
+              <Toaster />
+            </AuthProvider>
           </QueryProvider>
         </NuqsAdapter>
       </body>

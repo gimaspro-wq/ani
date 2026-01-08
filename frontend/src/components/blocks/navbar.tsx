@@ -2,12 +2,37 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/auth/auth-context";
+import { buildAuthUrl } from "@/lib/auth/validation";
 import { CommandMenu } from "@/components/blocks/command-menu";
 import { GitHubIcon, SearchIcon, MenuIcon, XIcon } from "@/components/ui/icons";
 import { Kbd } from "@/components/ui/kbd";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+function UserAvatar({ email }: { email: string }) {
+  // Get initials from email (first letter)
+  const initial = email.charAt(0).toUpperCase();
+
+  return (
+    <div className="w-8 h-8 rounded-full bg-foreground text-background flex items-center justify-center text-sm font-medium">
+      {initial}
+    </div>
+  );
+}
 
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout, isSyncing, isLoading } = useAuth();
+  const pathname = usePathname();
 
   return (
     <>
@@ -92,6 +117,14 @@ export function Navbar() {
                 <SearchIcon className="w-5 h-5 text-muted-foreground" />
               </button>
 
+              {/* Sync indicator */}
+              {isSyncing && (
+                <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-lg bg-cyan/10 border border-cyan/20">
+                  <Spinner className="w-4 h-4 text-cyan" />
+                  <span className="text-xs text-cyan">Syncing...</span>
+                </div>
+              )}
+
               <a
                 href="https://github.com/noelrohi/anirohi"
                 target="_blank"
@@ -101,6 +134,50 @@ export function Navbar() {
               >
                 <GitHubIcon className="w-5 h-5 text-muted-foreground" />
               </a>
+
+              {/* Auth UI */}
+              {isLoading ? (
+                <div className="hidden md:block">
+                  <Spinner className="w-5 h-5 text-muted-foreground" />
+                </div>
+              ) : isAuthenticated && user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 p-1 rounded-lg hover:bg-foreground/5 transition-colors">
+                      <UserAvatar email={user.email} />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <div className="px-3 py-2">
+                      <p className="text-sm font-medium text-foreground">{user.email}</p>
+                      <p className="text-xs text-muted-foreground">Logged in</p>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem>
+                      <Link href="/library" className="w-full">
+                        Library
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout} className="text-destructive">
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="hidden md:flex items-center gap-2">
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={buildAuthUrl("/login", pathname)}>
+                      Login
+                    </Link>
+                  </Button>
+                  <Button size="sm" asChild>
+                    <Link href={buildAuthUrl("/register", pathname)}>
+                      Sign Up
+                    </Link>
+                  </Button>
+                </div>
+              )}
 
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -163,6 +240,49 @@ export function Navbar() {
               >
                 Saved
               </Link>
+
+              {/* Auth section for mobile */}
+              {!isLoading && (
+                <>
+                  <div className="h-px my-2 bg-border" />
+                  {isAuthenticated && user ? (
+                    <>
+                      <div className="px-3 py-2">
+                        <p className="text-sm font-medium text-foreground">{user.email}</p>
+                        <p className="text-xs text-muted-foreground">Logged in</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          logout();
+                          setIsMenuOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg text-sm text-destructive hover:bg-foreground/5 transition-colors"
+                      >
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <div className="flex gap-2 px-3 py-2">
+                      <Button variant="outline" size="sm" className="flex-1" asChild>
+                        <Link
+                          href={buildAuthUrl("/login", pathname)}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Login
+                        </Link>
+                      </Button>
+                      <Button size="sm" className="flex-1" asChild>
+                        <Link
+                          href={buildAuthUrl("/register", pathname)}
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          Sign Up
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         )}
