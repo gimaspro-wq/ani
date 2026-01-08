@@ -12,6 +12,7 @@ This is a monorepo containing:
 ani/
 ├── backend/          # FastAPI authentication backend
 ├── frontend/         # Next.js web application  
+├── parser/           # External parser service (consumet gogoanime)
 ├── docs/             # General documentation
 ├── docker-compose.yml # Docker services (backend + postgres)
 └── README.md         # This file
