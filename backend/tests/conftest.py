@@ -9,6 +9,7 @@ os.environ["DEBUG"] = "true"
 os.environ["COOKIE_SECURE"] = "false"
 # Use clearly identifiable test secret key (32+ chars for validation)
 os.environ["SECRET_KEY"] = "TEST_SECRET_KEY_DO_NOT_USE_IN_PRODUCTION_32CHARS"
+os.environ["INTERNAL_TOKEN"] = "TEST_INTERNAL_TOKEN_FOR_PARSER_ACCESS_32CHARS"
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["REDIS_URL"] = "redis://localhost:6379/15"  # Use test DB 15
 os.environ["ENV"] = "test"

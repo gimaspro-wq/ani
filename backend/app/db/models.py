@@ -1,14 +1,35 @@
 from datetime import datetime, timezone
 import uuid
+import json
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, Index
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, Index, event
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.mutable import MutableList
 import enum
 
 from app.db.database import Base
 # Import RBAC association table
 from app.db.rbac_models import user_roles
+
+
+# Custom JSON-backed array type for SQLite compatibility
+class JSONEncodedList(Text):
+    """JSON-encoded list column type for SQLite."""
+    
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == 'sqlite':
+            return json.dumps(value)
+        return value
+    
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == 'sqlite':
+            return json.loads(value)
+        return value
 
 
 class LibraryStatus(str, enum.Enum):
@@ -162,8 +183,8 @@ class Anime(Base):
     poster = Column(String, nullable=True)
     source_name = Column(String, nullable=False, index=True)
     source_id = Column(String, nullable=False, index=True)
-    genres = Column(ARRAY(String), nullable=True)
-    alternative_titles = Column(ARRAY(String), nullable=True)
+    genres = Column(JSONEncodedList().with_variant(ARRAY(String), 'postgresql'), nullable=True)
+    alternative_titles = Column(JSONEncodedList().with_variant(ARRAY(String), 'postgresql'), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     created_at = Column(
         DateTime(timezone=True),
