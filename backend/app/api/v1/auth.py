@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Response, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
+from app.core.config import settings, REFRESH_COOKIE_NAME
 from app.core.dependencies import get_current_user
 from app.core.security import create_access_token
 from app.db.database import get_db
@@ -44,9 +44,9 @@ async def register(
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = await create_refresh_token(db, user.id)
     
-    # Set refresh token cookie with proper flags
+    # Set refresh token cookie with proper security flags
     response.set_cookie(
-        key="refresh_token",
+        key=REFRESH_COOKIE_NAME,
         value=refresh_token,
         httponly=True,
         secure=settings.COOKIE_SECURE,
@@ -76,9 +76,9 @@ async def login(
     access_token = create_access_token(data={"sub": user.id})
     refresh_token = await create_refresh_token(db, user.id)
     
-    # Set refresh token cookie with proper flags
+    # Set refresh token cookie with proper security flags
     response.set_cookie(
-        key="refresh_token",
+        key=REFRESH_COOKIE_NAME,
         value=refresh_token,
         httponly=True,
         secure=settings.COOKIE_SECURE,
@@ -93,7 +93,7 @@ async def login(
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
     response: Response,
-    refresh_token: Annotated[str | None, Cookie()] = None,
+    refresh_token: Annotated[str | None, Cookie(alias=REFRESH_COOKIE_NAME)] = None,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -118,9 +118,9 @@ async def refresh(
     access_token = create_access_token(data={"sub": user.id})
     new_refresh_token = await create_refresh_token(db, user.id)
     
-    # Set new refresh token cookie with proper flags
+    # Set new refresh token cookie with proper security flags
     response.set_cookie(
-        key="refresh_token",
+        key=REFRESH_COOKIE_NAME,
         value=new_refresh_token,
         httponly=True,
         secure=settings.COOKIE_SECURE,
@@ -135,7 +135,7 @@ async def refresh(
 @router.post("/logout", response_model=MessageResponse)
 async def logout(
     response: Response,
-    refresh_token: Annotated[str | None, Cookie()] = None,
+    refresh_token: Annotated[str | None, Cookie(alias=REFRESH_COOKIE_NAME)] = None,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -145,7 +145,7 @@ async def logout(
     if refresh_token:
         await revoke_refresh_token(db, refresh_token)
     
-    # Clear refresh token cookie
-    response.delete_cookie(key="refresh_token", path="/")
+    # Clear refresh token cookie with explicit deletion
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/", samesite="lax")
     
     return MessageResponse(message="Logged out successfully")

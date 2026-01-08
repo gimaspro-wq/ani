@@ -77,7 +77,7 @@ The backend is a FastAPI application providing authentication APIs.
 ### Features
 
 - ✅ User registration and login
-- ✅ JWT access tokens (30min TTL)
+- ✅ JWT access tokens (15min TTL)
 - ✅ Refresh tokens in httpOnly cookies (30 day TTL)
 - ✅ Token rotation on refresh
 - ✅ Password hashing with bcrypt
@@ -161,8 +161,9 @@ ENV=dev
 # Database
 DATABASE_URL=postgresql+asyncpg://ani_user:ani_password@postgres:5432/ani_db
 
-# Security
-SECRET_KEY=your-secret-key-change-in-production
+# Security (CHANGE IN PRODUCTION!)
+# Generate with: openssl rand -hex 32
+SECRET_KEY=your-secret-key-min-32-chars-in-production
 JWT_ACCESS_TTL_MINUTES=15
 REFRESH_TTL_DAYS=30
 COOKIE_SECURE=false

@@ -3,6 +3,13 @@ import os
 from typing import AsyncGenerator, Generator
 from collections.abc import AsyncIterator
 
+# Set testing environment variables BEFORE importing settings
+os.environ["TESTING"] = "1"
+os.environ["DEBUG"] = "true"
+os.environ["COOKIE_SECURE"] = "false"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing-minimum-32-characters-long"
+os.environ["ENV"] = "dev"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -13,11 +20,6 @@ from sqlalchemy.pool import StaticPool
 from app.core.config import settings
 from app.db.database import Base, get_db
 from app.main import app
-
-# Set testing environment variable
-os.environ["TESTING"] = "1"
-os.environ["DEBUG"] = "true"
-os.environ["COOKIE_SECURE"] = "false"
 
 # Use SQLite for testing with async
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

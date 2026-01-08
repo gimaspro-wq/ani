@@ -28,6 +28,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://ani_user:ani_password@postgres:5432/ani_db
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production-use-openssl-rand-hex-32}
       - ALLOWED_ORIGINS=http://localhost:3000
       - JWT_ACCESS_TTL_MINUTES=15
       - REFRESH_TTL_DAYS=30
