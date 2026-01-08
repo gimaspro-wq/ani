@@ -168,6 +168,8 @@ The frontend is a Next.js 16 application with React 19.
 
 - **Clean UI** — Minimalist design focused on content
 - **Fast Search** — Quick anime discovery with command menu (⌘K)
+- **Advanced Search** — Filters by genre, year, season, type with shareable URLs
+- **Client-Side Index** — Instant search with MiniSearch + IndexedDB caching
 - **Trending** — Stay updated with currently popular anime
 - **Schedule** — Track upcoming episode releases
 - **PWA Support** — Install as a native app on any device
@@ -199,6 +201,52 @@ bun dev       # Start development server
 bun build     # Build for production
 bun start     # Start production server
 bun lint      # Run ESLint
+```
+
+## Search & Filters
+
+### Advanced Search
+
+Navigate to `/search` for advanced search with filters:
+
+- **Text search**: Search by anime title (English or Japanese)
+- **Genres**: Filter by multiple genres (Action, Adventure, Comedy, etc.)
+- **Type**: Filter by TV, Movie, OVA, ONA, Special
+- **Year**: Filter by release year
+- **Season**: Filter by season (Winter, Spring, Summer, Fall)
+
+All filters are synced to the URL, making searches shareable:
+
+```
+/search?q=demon&type=tv&year=2019&genres=Action&genres=Fantasy
+```
+
+### Command Palette
+
+Press `⌘K` (Mac) or `Ctrl+K` (Windows/Linux) to open the quick search palette:
+
+- Type to search anime instantly
+- Recent searches stored for quick access
+- Keyboard navigation with arrow keys
+- Press Enter to navigate to selected anime
+
+### Client-Side Search Index
+
+The app builds a local search index from popular anime for instant results:
+
+- **Automatic**: Index built on first use from popular/recent/airing anime
+- **Persistent**: Stored in IndexedDB with 24-hour cache
+- **Fast**: Prefix and fuzzy matching with MiniSearch
+- **Efficient**: Only necessary fields indexed to save memory
+
+To clear the search index:
+1. Open browser DevTools (F12)
+2. Go to Application tab
+3. Under Storage → IndexedDB → Delete `keyval-store`
+
+Or use the console:
+```javascript
+indexedDB.deleteDatabase('keyval-store');
 ```
 
 ## Environment Variables
