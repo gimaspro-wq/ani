@@ -21,7 +21,7 @@ ani/
 
 ### Prerequisites
 
-- **Frontend**: [Bun](https://bun.sh/) (recommended) or Node.js 18+
+- **Frontend**: Node.js 18+
 - **Backend**: Python 3.11+ and Docker (for PostgreSQL)
 - **Database**: PostgreSQL 16+ (via Docker or local install)
 
@@ -84,13 +84,13 @@ uvicorn app.main:app --reload --port 8000
 
 ```bash
 cd frontend
-bun install
+npm install
 cp .env.example .env.local
 
 # Optional: Edit .env.local if you need to override defaults
 # NEXT_PUBLIC_APP_URL is optional and defaults to localhost:3000
 
-bun dev
+npm run dev
 ```
 
 The frontend will be available at [http://localhost:3000](http://localhost:3000).
@@ -209,10 +209,10 @@ The frontend is a Next.js 16 application with React 19.
 
 ```bash
 cd frontend
-bun dev       # Start development server
-bun build     # Build for production
-bun start     # Start production server
-bun lint      # Run ESLint
+npm run dev       # Start development server
+npm run build     # Build for production
+npm run start     # Start production server
+npm run lint      # Run ESLint
 ```
 
 ## Search & Filters

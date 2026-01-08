@@ -10,10 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-bun run dev          # Start development server (localhost:3000)
-bun run build        # Production build
-bun run start        # Start production server
-bun run lint         # Run ESLint
+npm run dev          # Start development server (localhost:3000)
+npm run build        # Production build
+npm run start        # Start production server
+npm run lint         # Run ESLint
 ```
 
 ## Architecture
@@ -53,4 +53,4 @@ This is a Next.js 16 anime streaming application using the App Router with React
 - Design tokens: `--background`, `--foreground`, `--primary`, `--cyan`, `--pink`, etc.
 
 ### Adding UI Components
-Use shadcn CLI: `bunx shadcn@latest add <component>`
+Use shadcn CLI: `npx shadcn@latest add <component>`

@@ -5,7 +5,7 @@ This document provides step-by-step instructions for testing the Phase 1 backend
 ## Prerequisites
 
 - Docker & Docker Compose (recommended) OR
-- Python 3.12+ and Bun 1.x+ (local development)
+- Python 3.12+ and npm (local development)
 - PostgreSQL 15+ (if running locally without Docker)
 
 ## Quick Start (Docker Compose)
@@ -90,8 +90,8 @@ curl http://localhost:8000/api/v1/me/history \
 
 ```bash
 # Install dependencies and build
-docker compose exec frontend bun install
-docker compose exec frontend bun run build
+docker compose exec frontend npm install
+docker compose exec frontend npm run build
 
 # Expected: Build completes without errors
 ```
@@ -100,7 +100,7 @@ docker compose exec frontend bun run build
 
 ```bash
 # Start dev server (if not already running)
-docker compose exec frontend bun run dev
+docker compose exec frontend npm run dev
 
 # Visit http://localhost:3000
 # - Homepage should load
@@ -144,20 +144,17 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```bash
 cd frontend
 
-# Install Bun (if not installed)
-curl -fsSL https://bun.sh/install | bash
-
 # Install dependencies
-bun install
+npm install
 
 # Set environment variables
 echo "NEXT_PUBLIC_BACKEND_URL=http://localhost:8000" > .env.local
 
 # Build
-bun run build
+npm run build
 
 # Start dev server
-bun run dev
+npm run dev
 ```
 
 ---
@@ -173,7 +170,7 @@ bun run dev
 - [ ] Multi-provider support works (test with different provider values)
 
 ### Frontend Build ✅
-- [ ] `bun run build` completes without errors
+- [ ] `npm run build` completes without errors
 - [ ] No TypeScript compilation errors
 - [ ] No ESLint errors
 - [ ] Build output size is reasonable
@@ -252,7 +249,7 @@ Expected indexes:
 ### Build Failing
 
 **Issue**: TypeScript errors in frontend  
-**Solution**: Run `bun install` to ensure dependencies are up to date
+**Solution**: Run `npm install` to ensure dependencies are up to date
 
 **Issue**: Missing environment variables  
 **Solution**: Check `.env.example` and create `.env.local` with required variables

@@ -231,7 +231,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### Build errors
 - Clear build cache: `rm -rf .next`
-- Reinstall dependencies: `bun install`
+- Reinstall dependencies: `npm install`
 - Check Node version: `node --version` (should be 18+)
 
 ## Manual Testing Checklist
