@@ -203,11 +203,6 @@ docker build -t ani-frontend ./frontend
 docker run -d -p 3000:3000 --name ani-frontend ani-frontend
 ```
 
-```bash
-docker build -t ani-frontend ./frontend
-docker run -d -p 3000:3000 --name ani-frontend ani-frontend
-```
-
 ### 6. Set Up Reverse Proxy (Production)
 
 For production with HTTPS, use a reverse proxy like nginx or Caddy.

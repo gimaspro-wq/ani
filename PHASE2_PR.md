@@ -138,7 +138,6 @@ pytest -q
 
 ```bash
 cd frontend
-bun run build
 npm run build
 ```
 
