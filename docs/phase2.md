@@ -237,7 +237,7 @@ npm run build  # Must succeed without errors
 ## Success Metrics
 
 - ✅ All acceptance criteria met
-- ✅ `bun run build` passes
+- ✅ `npm run build` passes
 - ✅ No TypeScript errors
 - ✅ No console warnings
 - ✅ Existing functionality unaffected
