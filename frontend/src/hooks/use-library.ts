@@ -2,10 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { backendAPI, type LibraryItem, type LibraryStatus } from "@/lib/api/backend";
+import { toast } from "sonner";
 
 /**
  * Hook for user library management.
- * Falls back to local storage when user is not authenticated.
+ * Requires authentication - all operations are server-only.
  */
 export function useLibrary(params?: {
   provider?: string;
@@ -45,6 +46,10 @@ export function useLibrary(params?: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['library'] });
     },
+    onError: (error) => {
+      console.error("Failed to update library:", error);
+      toast.error("Failed to update library. Please check your connection.");
+    },
   });
 
   // Mutation to delete library item
@@ -53,6 +58,10 @@ export function useLibrary(params?: {
       backendAPI.deleteLibraryItem(titleId, provider),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['library'] });
+    },
+    onError: (error) => {
+      console.error("Failed to delete library item:", error);
+      toast.error("Failed to delete library item. Please check your connection.");
     },
   });
 

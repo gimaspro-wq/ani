@@ -226,6 +226,37 @@ class BackendAPI {
     });
   }
 
+  async importLegacyData(data: {
+    progress: Array<{
+      animeId: string;
+      episodeNumber: number;
+      currentTime: number;
+      duration: number;
+      updatedAt: number;
+      poster?: string;
+      name?: string;
+    }>;
+    savedSeries: Array<{
+      id: string;
+      name: string;
+      poster: string;
+      savedAt: number;
+    }>;
+    provider?: string;
+  }): Promise<{
+    success: boolean;
+    progress_imported: number;
+    progress_skipped: number;
+    library_imported: number;
+    library_skipped: number;
+    message: string;
+  }> {
+    return this.request('/api/v1/me/import-legacy', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
   setAccessToken(token: string) {
     this.accessToken = token;
     if (typeof window !== 'undefined') {
