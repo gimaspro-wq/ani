@@ -128,7 +128,19 @@ The backend is a FastAPI application providing authentication APIs.
 | `/api/v1/me/progress` | GET | Get watch progress |
 | `/api/v1/me/progress/{episode_id}` | PUT | Update episode progress |
 | `/api/v1/me/history` | GET | Get watch history |
+| `/api/v1/me/import-legacy` | POST | Import legacy local data (one-time migration) |
 | `/docs` | GET | Interactive API documentation |
+
+### User Data Sync
+
+**All user data is stored server-side** and synced across devices when logged in:
+
+- Watch progress and history are saved only to the server
+- Library status and favorites require authentication
+- Offline changes are not supported (login required to track progress)
+- **Legacy Data Migration**: When you first login after updating, any existing local data is automatically imported to your account
+
+> **Note**: Search index is cached locally in IndexedDB for performance, but this is not user data.
 
 ### Backend Documentation
 
@@ -173,9 +185,9 @@ The frontend is a Next.js 16 application with React 19.
 - **Trending** — Stay updated with currently popular anime
 - **Schedule** — Track upcoming episode releases
 - **PWA Support** — Install as a native app on any device
-- **Watch Progress** — Track episode progress (local + server-synced when logged in)
+- **Watch Progress** — Track episode progress (synced across devices when logged in)
 - **Library Management** — Organize anime by status (watching, planned, completed, dropped)
-- **Saved Series** — Save favorite anime
+- **Favorites** — Mark anime as favorites
 
 ### Tech Stack
 
