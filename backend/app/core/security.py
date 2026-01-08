@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import uuid4
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -31,7 +32,8 @@ def create_access_token(data: dict[str, Any]) -> str:
     if "sub" in to_encode and not isinstance(to_encode["sub"], str):
         to_encode["sub"] = str(to_encode["sub"])
     
-    to_encode.update({"exp": expire, "type": "access"})
+    # Add unique identifier to ensure tokens are always unique
+    to_encode.update({"exp": expire, "type": "access", "jti": str(uuid4())})
     encoded_jwt = jwt.encode(
         to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM
     )
