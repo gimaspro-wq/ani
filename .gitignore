@@ -23,6 +23,7 @@ frontend/.yarn/*
 !frontend/.yarn/plugins
 !frontend/.yarn/releases
 !frontend/.yarn/versions
+frontend/package-lock.json
 
 # testing
 /coverage

@@ -99,7 +99,67 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
   http://localhost:8000/api/v1/me/history?limit=20
 ```
 
-### 4. Multi-Provider Support
+### 4. Search & Filters
+
+Advanced search with client-side indexing for fast results.
+
+**Features:**
+- **Client-side search index**: Built from RPC catalog data using MiniSearch
+- **IndexedDB persistence**: Index stored locally with 24-hour TTL
+- **Instant search**: Fast prefix and fuzzy matching
+- **URL-shareable filters**: All filters synced to URL query params
+- **Advanced filters**:
+  - Query text search
+  - Genres (multi-select)
+  - Year (single select)
+  - Season (winter/spring/summer/fall)
+  - Type (TV/Movie/OVA/ONA/Special)
+- **Improved command palette**: Recent searches, keyboard navigation
+- **Debounced input**: 200ms debounce for smooth UX
+
+**Pages:**
+- `/search` - Advanced search page with filters
+- Command palette (⌘K / Ctrl+K) - Quick search overlay
+
+**Index Management:**
+
+The search index is automatically built from popular, recently updated, and top airing anime on first use. It's stored in IndexedDB and refreshed every 24 hours.
+
+To manually clear the index:
+```javascript
+// In browser console
+import { getSearchIndex } from '@/lib/search/index';
+const index = getSearchIndex();
+await index.clear();
+```
+
+Or clear IndexedDB:
+```javascript
+// In browser console
+indexedDB.deleteDatabase('keyval-store');
+```
+
+**URL Filter Examples:**
+
+All filters are synced to URL query parameters, making searches shareable:
+
+```
+/search?q=naruto
+/search?q=action&genres=Action&genres=Adventure
+/search?q=demon&type=tv&year=2019
+/search?q=slice+of+life&season=spring&genres=Comedy
+```
+
+**Recent Searches:**
+
+The command palette stores your last 10 searches in localStorage for quick access. Clear them from the command palette UI or manually:
+
+```javascript
+// In browser console
+localStorage.removeItem('recent-searches');
+```
+
+### 5. Multi-Provider Support
 
 All features support multiple data providers for future expansion.
 
@@ -303,11 +363,8 @@ Designed for 4 vCPU / 8GB RAM minimum:
 
 Features planned for future releases:
 
-1. **Client-Side Search Index**: MiniSearch/FlexSearch with IndexedDB persistence
-2. **Advanced Search Page**: Filters for genres, year, season, status, type, studio, rating
-3. **Enhanced Command Palette**: Better keyboard navigation, quick actions
-4. **Rich Title Pages**: Seasons grouping, similar titles, trailers
-5. **Continue Watching**: Server-synced "continue watching" section
+1. **Rich Title Pages**: Seasons grouping, similar titles, trailers
+2. **Continue Watching**: Server-synced "continue watching" section
 
 ## Testing
 
