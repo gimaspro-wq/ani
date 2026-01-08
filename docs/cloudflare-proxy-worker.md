@@ -60,10 +60,10 @@ The app will throw an error if this is not set.
 cd ~/sandbox/m3u8proxy
 
 # Development
-bunx wrangler dev
+npx wrangler dev
 
 # Production
-bunx wrangler deploy
+npx wrangler deploy
 ```
 
 ## Features

@@ -139,6 +139,7 @@ pytest -q
 ```bash
 cd frontend
 bun run build
+npm run build
 ```
 
 **Status**: ⚠️ Blocked by Google Fonts network access
@@ -341,7 +342,7 @@ The only blockers are external (Google Fonts network access for build, auth UI f
    cd backend && pytest -q
    
    # Frontend (in unrestricted environment)
-   cd frontend && bun run build
+   cd frontend && npm run build
    
    # Docker Compose
    docker compose up -d

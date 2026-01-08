@@ -162,8 +162,8 @@ Phase 2 focuses on **UI integration** of the library management, progress tracki
 ### Build Verification
 ```bash
 cd frontend
-bun install
-bun run build  # Must succeed without errors
+npm install
+npm run build  # Must succeed without errors
 ```
 
 ### Functionality Testing

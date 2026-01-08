@@ -171,20 +171,20 @@ Follow the prompts and set environment variables in the Vercel dashboard.
 Create a `frontend/Dockerfile`:
 
 ```dockerfile
-FROM oven/bun:1.1.38 AS builder
+FROM node:18-alpine AS builder
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci
 COPY . .
-RUN bun run build
+RUN npm run build
 
-FROM oven/bun:1.1.38-slim
+FROM node:18-alpine
 WORKDIR /app
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 EXPOSE 3000
-CMD ["bun", "server.js"]
+CMD ["node", "server.js"]
 ```
 
 Update `frontend/next.config.ts` to enable standalone output:
@@ -197,6 +197,11 @@ export default {
 ```
 
 Build and run:
+
+```bash
+docker build -t ani-frontend ./frontend
+docker run -d -p 3000:3000 --name ani-frontend ani-frontend
+```
 
 ```bash
 docker build -t ani-frontend ./frontend
@@ -379,8 +384,8 @@ For Vercel/Netlify: Push changes to your git repository (auto-deploys).
 For self-hosted:
 ```bash
 cd frontend
-bun install --frozen-lockfile
-bun run build
+npm install
+npm run build
 # Restart your frontend server/container
 ```
 

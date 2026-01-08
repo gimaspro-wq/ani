@@ -6,9 +6,9 @@
 
 ## Commands
 ```bash
-bun run dev      # Start dev server (localhost:3000)
-bun run build    # Production build
-bun run lint     # Run ESLint
+npm run dev      # Start dev server (localhost:3000)
+npm run build    # Production build
+npm run lint     # Run ESLint
 ```
 No test framework configured.
 
@@ -22,7 +22,7 @@ No test framework configured.
 
 ## Architecture
 - Next.js 16 App Router with React 19 and React Compiler
-- `src/components/ui/` - shadcn/ui primitives (add via `bunx shadcn@latest add <component>`)
+- `src/components/ui/` - shadcn/ui primitives (add via `npx shadcn@latest add <component>`)
 - `src/components/blocks/` - Page sections and reusable blocks
 - `src/hooks/` - Custom hooks for watch progress, saved series, player preferences
 - `src/lib/orpc/` - oRPC router and procedures (API layer)
