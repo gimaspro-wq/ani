@@ -262,3 +262,145 @@ def test_multiple_providers(client: TestClient, test_user_data):
     items = response.json()
     assert len(items) == 1
     assert items[0]["status"] == "completed"
+
+
+def test_delete_single_history_entry(client: TestClient, test_user_data):
+    """Test deleting a single history entry."""
+    
+    # Register
+    response = client.post("/api/v1/auth/register", json=test_user_data)
+    access_token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # Create some history by updating progress
+    client.put(
+        "/api/v1/me/progress/episode-1?provider=rpc",
+        headers=headers,
+        json={
+            "title_id": "anime-123",
+            "position_seconds": 100.0,
+            "duration_seconds": 1440.0
+        }
+    )
+    
+    client.put(
+        "/api/v1/me/progress/episode-2?provider=rpc",
+        headers=headers,
+        json={
+            "title_id": "anime-123",
+            "position_seconds": 200.0,
+            "duration_seconds": 1440.0
+        }
+    )
+    
+    # Get history
+    response = client.get("/api/v1/me/history", headers=headers)
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 2
+    
+    # Delete one history entry
+    history_id = items[0]["id"]
+    response = client.delete(f"/api/v1/me/history/{history_id}", headers=headers)
+    assert response.status_code == 200
+    assert "deleted" in response.json()["message"].lower()
+    
+    # Verify history now has one entry
+    response = client.get("/api/v1/me/history", headers=headers)
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    
+    # Try to delete non-existent entry
+    response = client.delete("/api/v1/me/history/99999", headers=headers)
+    assert response.status_code == 404
+
+
+def test_clear_all_history(client: TestClient, test_user_data):
+    """Test clearing all history entries."""
+    
+    # Register
+    response = client.post("/api/v1/auth/register", json=test_user_data)
+    access_token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # Create multiple history entries
+    for i in range(5):
+        client.put(
+            f"/api/v1/me/progress/episode-{i}?provider=rpc",
+            headers=headers,
+            json={
+                "title_id": "anime-123",
+                "position_seconds": float(i * 100),
+                "duration_seconds": 1440.0
+            }
+        )
+    
+    # Verify history has entries
+    response = client.get("/api/v1/me/history", headers=headers)
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 5
+    
+    # Clear all history
+    response = client.delete("/api/v1/me/history?provider=rpc", headers=headers)
+    assert response.status_code == 200
+    assert "5" in response.json()["message"]
+    
+    # Verify history is empty
+    response = client.get("/api/v1/me/history", headers=headers)
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 0
+
+
+def test_history_isolation_by_provider(client: TestClient, test_user_data):
+    """Test that history is isolated by provider."""
+    
+    # Register
+    response = client.post("/api/v1/auth/register", json=test_user_data)
+    access_token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # Add history for rpc provider
+    client.put(
+        "/api/v1/me/progress/episode-1?provider=rpc",
+        headers=headers,
+        json={
+            "title_id": "anime-123",
+            "position_seconds": 100.0,
+            "duration_seconds": 1440.0
+        }
+    )
+    
+    # Add history for different provider
+    client.put(
+        "/api/v1/me/progress/episode-1?provider=aniliberty",
+        headers=headers,
+        json={
+            "title_id": "anime-123",
+            "position_seconds": 100.0,
+            "duration_seconds": 1440.0
+        }
+    )
+    
+    # Get history for rpc provider
+    response = client.get("/api/v1/me/history?provider=rpc", headers=headers)
+    assert response.status_code == 200
+    rpc_items = response.json()
+    assert len(rpc_items) == 1
+    
+    # Clear rpc history
+    response = client.delete("/api/v1/me/history?provider=rpc", headers=headers)
+    assert response.status_code == 200
+    
+    # Verify rpc history is empty
+    response = client.get("/api/v1/me/history?provider=rpc", headers=headers)
+    assert response.status_code == 200
+    assert len(response.json()) == 0
+    
+    # Verify aniliberty history is still there
+    response = client.get("/api/v1/me/history?provider=aniliberty", headers=headers)
+    assert response.status_code == 200
+    aniliberty_items = response.json()
+    assert len(aniliberty_items) == 1
