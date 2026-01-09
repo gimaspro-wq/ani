@@ -98,12 +98,12 @@ class StateManager:
             "episodes_count": episodes_count,
             "timestamp": datetime.utcnow().isoformat(),
         })
-        if anime_payload is not None:
-            entry["anime_payload"] = anime_payload
-        if episodes_payload is not None:
-            entry["episodes"] = episodes_payload
-        if videos_payload is not None:
-            entry["videos"] = videos_payload
+        optional_fields = {
+            "anime_payload": anime_payload,
+            "episodes": episodes_payload,
+            "videos": videos_payload,
+        }
+        entry.update({k: v for k, v in optional_fields.items() if v is not None})
         self.state["processed_anime"][source_id] = entry
     
     def is_anime_processed(self, source_id: str) -> bool:

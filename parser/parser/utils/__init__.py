@@ -2,7 +2,7 @@
 import asyncio
 import random
 import time
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 def generate_source_id(shikimori_id: int) -> str:
@@ -57,7 +57,10 @@ def exponential_backoff_with_jitter(
     return jittered_delay
 
 
-def compute_diff(new: dict, old: dict | None) -> dict:
+from typing import Optional, Dict, Any
+
+
+def compute_diff(new: dict, old: Optional[dict]) -> dict:
     """
     Compute shallow diff between two dictionaries.
 
@@ -82,7 +85,7 @@ def normalize_video_source(
     url: str,
     source_name: str,
     priority: int,
-) -> dict | None:
+) -> Optional[Dict[str, Any]]:
     """
     Normalize and validate a single video source.
 
@@ -99,8 +102,8 @@ def normalize_video_source(
     trimmed = url.strip()
     if not trimmed:
         return None
-    # Enforce HLS player-ready link
-    if not trimmed.lower().endswith(".m3u8"):
+    # Enforce HLS player-ready link (allow query suffixes)
+    if ".m3u8" not in trimmed.lower():
         return None
     return {
         "type": "hls",

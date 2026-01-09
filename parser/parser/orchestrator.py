@@ -1,7 +1,7 @@
 """Main orchestrator for the parser service."""
 import asyncio
 import logging
-from typing import Optional, Any
+from typing import Optional, Any, Dict
 
 from parser.config import settings
 from parser.clients.kodik import KodikClient
@@ -17,6 +17,25 @@ from parser.utils import (
 from parser.state import StateManager
 
 logger = logging.getLogger(__name__)
+
+
+def _video_key(episode_source_id: str, player_data: Dict[str, Any]) -> str:
+    """Build consistent deduplication key for a video payload."""
+    url = player_data.get("url")
+    source_name = player_data.get("source_name")
+    if not url or not source_name:
+        raise ValueError("player_data must include url and source_name")
+    return f"{episode_source_id}|{url}|{source_name}"
+
+
+def _build_episode_payload(episode_source_id: str, ep: Dict[str, Any], is_available: bool) -> Dict[str, Any]:
+    """Create canonical episode payload for backend import."""
+    return {
+        "source_episode_id": episode_source_id,
+        "number": ep["number"],
+        "title": ep.get("title"),
+        "is_available": is_available,
+    }
 
 
 class ParserOrchestrator:
@@ -123,7 +142,7 @@ class ParserOrchestrator:
                     
                     translations = ep.get("translations") or []
                     normalized_videos = []
-                    seen_urls: set[str] = set()
+                    seen_keys: set[str] = set()
                     for idx, translation in enumerate(translations):
                         player = normalize_video_source(
                             translation.get("link"),
@@ -132,21 +151,16 @@ class ParserOrchestrator:
                         )
                         if player is None:
                             continue
-                        key = f"{episode_source_id}|{player['url']}|{player['source_name']}"
-                        if key in seen_urls:
+                        key = _video_key(episode_source_id, player)
+                        if key in seen_keys:
                             continue
-                        seen_urls.add(key)
+                        seen_keys.add(key)
                         normalized_videos.append(player)
                     episode_videos[episode_source_id] = normalized_videos
                     
                     is_available = bool(normalized_videos)
                     
-                    episode_payload = {
-                        "source_episode_id": episode_source_id,
-                        "number": ep["number"],
-                        "title": ep.get("title"),
-                        "is_available": is_available,
-                    }
+                    episode_payload = _build_episode_payload(episode_source_id, ep, is_available)
                     
                     previous_episode_payload = episodes_state.get(episode_source_id)
                     ep_diff = compute_diff(episode_payload, previous_episode_payload)
@@ -154,6 +168,7 @@ class ParserOrchestrator:
                         if ep_diff:
                             logger.debug(f"Episode diff for {episode_source_id}: {ep_diff}")
                         episodes_for_import.append(episode_payload)
+                        episodes_state[episode_source_id] = episode_payload
                 
                 if episodes_for_import:
                     logger.info(f"Importing {len(episodes_for_import)} episodes for anime {source_id}")
@@ -170,6 +185,7 @@ class ParserOrchestrator:
                 
                 # Step 5: Import video sources for each episode (only changed/new)
                 video_import_errors = 0
+                latest_video_payloads = {}
                 for ep in episodes_data:
                     episode_source_id = generate_episode_source_id(source_id, ep["number"])
                     videos_for_episode = episode_videos.get(episode_source_id, [])
@@ -182,7 +198,7 @@ class ParserOrchestrator:
                         continue
                     
                     for player_data in videos_for_episode:
-                        key = f"{episode_source_id}|{player_data['url']}|{player_data['source_name']}"
+                        key = _video_key(episode_source_id, player_data)
                         previous_video_payload = videos_state.get(key)
                         video_diff = compute_diff(player_data, previous_video_payload)
                         if previous_video_payload is not None and not video_diff:
@@ -197,6 +213,9 @@ class ParserOrchestrator:
                         )
                         if not success:
                             video_import_errors += 1
+                        else:
+                            videos_state[key] = player_data
+                            latest_video_payloads[key] = player_data
                 
                 if video_import_errors > 0:
                     logger.warning(
@@ -204,22 +223,7 @@ class ParserOrchestrator:
                     )
                 
                 # Persist latest payloads for idempotency on subsequent runs
-                latest_episode_payloads = {
-                    generate_episode_source_id(source_id, ep["number"]): {
-                        "source_episode_id": generate_episode_source_id(source_id, ep["number"]),
-                        "number": ep["number"],
-                        "title": ep.get("title"),
-                        "is_available": bool(episode_videos.get(generate_episode_source_id(source_id, ep["number"]), [])),
-                    }
-                    for ep in episodes_data
-                }
-                latest_video_payloads = {}
-                for ep in episodes_data:
-                    episode_source_id = generate_episode_source_id(source_id, ep["number"])
-                    for player_data in episode_videos.get(episode_source_id, []):
-                        key = f"{episode_source_id}|{player_data['url']}|{player_data['source_name']}"
-                        latest_video_payloads[key] = player_data
-                
+                latest_episode_payloads: dict[str, dict[str, Any]] = dict(episodes_state)
                 # Mark as processed with payload snapshots
                 self.state_manager.mark_anime_processed(
                     source_id=source_id,
