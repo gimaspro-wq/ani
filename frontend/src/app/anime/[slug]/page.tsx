@@ -21,7 +21,7 @@ export async function generateMetadata({
   const anime = await getAnimeBySlug(params.slug);
 
   if (!anime) {
-    return { title: "Аниме не найдено" };
+    return { title: "Аниме не найдено", robots: { index: false, follow: false } };
   }
 
   const description = anime.description
@@ -31,6 +31,7 @@ export async function generateMetadata({
   return {
     title: anime.title,
     description,
+    alternates: { canonical: `/anime/${params.slug}` },
     openGraph: {
       title: anime.title,
       description,

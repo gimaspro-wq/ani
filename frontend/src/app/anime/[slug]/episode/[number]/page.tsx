@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Footer } from "@/components/blocks/footer";
 import { Navbar } from "@/components/blocks/navbar";
 import { EpisodeList } from "@/components/EpisodeList";
-import { VideoPlayer } from "@/components/VideoPlayer";
+import { EpisodePlayerWrapper } from "@/components/EpisodePlayerWrapper";
 import { getAnimeBySlug, getEpisodesBySlug } from "@/lib/public-api";
 
 export const revalidate = 60;
@@ -22,7 +22,7 @@ export async function generateMetadata({
   const anime = await getAnimeBySlug(params.slug);
 
   if (!anime || Number.isNaN(episodeNumber)) {
-    return { title: "Эпизод не найден" };
+    return { title: "Эпизод не найден", robots: { index: false, follow: false } };
   }
 
   const title = `${anime.title} — Серия ${episodeNumber}`;
@@ -33,6 +33,7 @@ export async function generateMetadata({
   return {
     title,
     description,
+    alternates: { canonical: `/anime/${params.slug}/episode/${params.number}` },
     openGraph: {
       title,
       description,
@@ -71,29 +72,60 @@ export default async function EpisodePage({
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="mx-auto max-w-6xl px-4 pb-12 pt-20 space-y-8">
-        <div className="space-y-2">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
-            Серия {episode.number}
-          </p>
-          <h1 className="text-2xl font-semibold text-foreground lg:text-3xl">
-            {anime.title}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {episode.title || "Название серии недоступно"}
-          </p>
-        </div>
-
-        <VideoPlayer sources={episode.video_sources} title={anime.title} />
-
-        <EpisodeList
-          episodes={episodes}
-          slug={slug}
-          currentNumber={episode.number}
-          className="pt-4"
-        />
-      </main>
+      <EpisodeView
+        animeTitle={anime.title}
+        slug={slug}
+        episode={episode}
+        episodes={episodes}
+      />
       <Footer />
     </div>
+  );
+}
+
+function EpisodeView({
+  animeTitle,
+  slug,
+  episode,
+  episodes,
+}: {
+  animeTitle: string;
+  slug: string;
+  episode: (typeof episodes)[number];
+  episodes: typeof episodes;
+}) {
+  return (
+    <main className="mx-auto max-w-6xl px-4 pb-12 pt-20 space-y-8">
+      <div className="space-y-3">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground/70">
+          Серия {episode.number}
+        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground lg:text-3xl">
+              {animeTitle}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {episode.title || "Название серии недоступно"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <EpisodePlayerWrapper
+        slug={slug}
+        episodes={episodes}
+        currentNumber={episode.number}
+        sources={episode.video_sources}
+        animeTitle={animeTitle}
+      />
+
+      <EpisodeList
+        episodes={episodes}
+        slug={slug}
+        currentNumber={episode.number}
+        className="pt-4"
+      />
+    </main>
   );
 }

@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { Footer } from "@/components/blocks/footer";
 import { Navbar } from "@/components/blocks/navbar";
-import { AnimeGrid, AnimeGridSkeleton } from "@/components/AnimeGrid";
+import { AnimeGridSkeleton } from "@/components/AnimeGrid";
+import { CatalogExplorer } from "@/components/CatalogExplorer";
 import type { AnimeListItem } from "@/lib/types";
 import { getAnimeList } from "@/lib/public-api";
 
@@ -9,7 +10,7 @@ export const revalidate = 60;
 
 async function AnimeCatalog({ promise }: { promise: Promise<AnimeListItem[]> }) {
   const anime = await promise;
-  return <AnimeGrid anime={anime} />;
+  return <CatalogExplorer anime={anime} />;
 }
 
 export default function HomePage() {

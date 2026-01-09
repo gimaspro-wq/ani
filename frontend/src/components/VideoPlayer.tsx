@@ -3,15 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { VideoSource } from "@/lib/types";
 import { SourceSwitcher } from "./SourceSwitcher";
+import { Spinner } from "@/components/ui/spinner";
 
 interface VideoPlayerProps {
   sources: VideoSource[];
   title?: string;
+  onEnded?: () => void;
 }
 
-export function VideoPlayer({ sources, title }: VideoPlayerProps) {
+export function VideoPlayer({ sources, title, onEnded }: VideoPlayerProps) {
   const [selectedId, setSelectedId] = useState<string | null>(sources[0]?.id ?? null);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -28,6 +31,7 @@ export function VideoPlayer({ sources, title }: VideoPlayerProps) {
 
     // Reset previous errors when switching sources
     setError(null);
+    setIsLoading(true);
 
     if (selectedSource.type === "mp4" || selectedSource.type === "m3u8") {
       const video = videoRef.current;
@@ -108,7 +112,11 @@ export function VideoPlayer({ sources, title }: VideoPlayerProps) {
               title={playerTitle}
               className="absolute inset-0 h-full w-full rounded-b-xl"
               allowFullScreen
-              onError={() => setError("Видео временно недоступно")}
+              onLoad={() => setIsLoading(false)}
+              onError={() => {
+                setIsLoading(false);
+                setError("Видео временно недоступно");
+              }}
             />
           ) : (
             <video
@@ -117,8 +125,20 @@ export function VideoPlayer({ sources, title }: VideoPlayerProps) {
               className="absolute inset-0 h-full w-full rounded-b-xl bg-black"
               controls
               playsInline
-              onError={() => setError("Видео временно недоступно")}
+              onLoadedData={() => setIsLoading(false)}
+              onCanPlay={() => setIsLoading(false)}
+              onError={() => {
+                setIsLoading(false);
+                setError("Видео временно недоступно");
+              }}
+              onEnded={onEnded}
             />
+          )}
+
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+              <Spinner className="h-8 w-8 text-white" />
+            </div>
           )}
         </div>
       </div>
@@ -126,7 +146,10 @@ export function VideoPlayer({ sources, title }: VideoPlayerProps) {
       <SourceSwitcher
         sources={sources}
         activeId={selectedSource.id}
-        onSelect={(id) => setSelectedId(id)}
+        onSelect={(id) => {
+          setSelectedId(id);
+          setIsLoading(true);
+        }}
       />
 
       {error ? (
