@@ -19,6 +19,10 @@ class AppError(Exception):
         super().__init__(message)
 
 
+# Alias for clarity at the application layer
+ApplicationError = AppError
+
+
 class ValidationError(AppError):
     """Validation error."""
     
@@ -71,7 +75,7 @@ class ConflictError(AppError):
         super().__init__(
             code="CONFLICT",
             message=message,
-            status_code=409
+            status_code=400
         )
 
 

@@ -7,7 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.models import RefreshToken, User
+from app.db.models import RefreshToken, User as UserModel
+from app.domain.entities import User
 from app.domain.interfaces.repositories import IRefreshTokenService, ISecurityService
 
 
@@ -44,8 +45,8 @@ class RefreshTokenService(IRefreshTokenService):
         """Verify refresh token and return user."""
         # Find all non-revoked tokens with their users using a join
         result = await self.db.execute(
-            select(RefreshToken, User)
-            .join(User, RefreshToken.user_id == User.id)
+            select(RefreshToken, UserModel)
+            .join(UserModel, RefreshToken.user_id == UserModel.id)
             .filter(
                 RefreshToken.revoked == False,
                 RefreshToken.expires_at > datetime.now(timezone.utc)
@@ -56,7 +57,13 @@ class RefreshTokenService(IRefreshTokenService):
         # Check each token hash
         for db_token, user in tokens_with_users:
             if self.security.verify_password(token, db_token.token_hash):
-                return user
+                return User(
+                    id=user.id,
+                    email=user.email,
+                    hashed_password=user.hashed_password,
+                    is_active=user.is_active,
+                    created_at=user.created_at,
+                )
         
         return None
     

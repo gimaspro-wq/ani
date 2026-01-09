@@ -5,10 +5,14 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.use_cases.authentication import AuthenticationService
 from app.core.config import settings
+from app.core.container import get_auth_service
+from app.core.errors import AuthenticationError
 from app.core.security import decode_access_token
 from app.db.database import get_db
-from app.db.models import User, AdminUser
+from app.db.models import AdminUser
+from app.domain.entities import User
 
 security = HTTPBearer()
 
@@ -32,7 +36,7 @@ async def verify_internal_token(x_internal_token: str = Header(...)) -> None:
 
 async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)],
-    db: Annotated[AsyncSession, Depends(get_db)],
+    auth_service: Annotated[AuthenticationService, Depends(get_auth_service)],
 ) -> User:
     """
     Get the current authenticated user from the access token.
@@ -40,28 +44,14 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found.
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    
-    if payload is None:
-        raise credentials_exception
-    
-    user_id: int | None = payload.get("sub")
-    if user_id is None:
-        raise credentials_exception
-    
-    result = await db.execute(select(User).filter(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise credentials_exception
-    
-    return user
+    try:
+        return await auth_service.get_current_user(credentials.credentials)
+    except AuthenticationError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=exc.message,
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
 
 
 async def get_current_admin(
