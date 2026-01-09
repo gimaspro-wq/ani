@@ -31,10 +31,10 @@ from app.infrastructure.adapters.redis_client import redis_client
 setup_logging(debug=settings.DEBUG)
 logger = logging.getLogger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     """Application lifespan manager for startup and shutdown."""
-    if settings.AUTO_RUN_MIGRATIONS and settings.ENV != "production":
-    run_migrations()
-
+    
     # Startup
     logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION} (env={settings.ENV})")
     
@@ -62,6 +62,8 @@ logger = logging.getLogger(__name__)
         except Exception as e:
             logger.error(f"Migration validation failed: {e}")
             raise
+    else:
+        logger.info("Database migrations must be run separately from application startup.")
     
     logger.info("Application startup complete")
     
@@ -147,4 +149,3 @@ async def root():
 async def health():
     """Health check endpoint."""
     return {"status": "healthy", "version": settings.VERSION}
-

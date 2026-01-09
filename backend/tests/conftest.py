@@ -1,7 +1,14 @@
 import asyncio
 import os
+import sys
+from pathlib import Path
 from typing import AsyncGenerator, Generator
 from collections.abc import AsyncIterator
+
+# Ensure repository root is importable when pytest is run from any working directory
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 # Set testing environment variables BEFORE importing settings
 os.environ["TESTING"] = "1"

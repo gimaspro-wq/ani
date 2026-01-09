@@ -36,13 +36,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: ani-backend
-    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    # Migrations must be run separately from application startup.
     # Load environment variables from backend/.env file
     # Must include SECRET_KEY (generate with: openssl rand -hex 32)
     env_file:
       - ./backend/.env
-    volumes:
-      - ./backend:/app
     ports:
       - "8000:8000"
     environment:

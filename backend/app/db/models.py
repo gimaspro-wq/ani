@@ -124,7 +124,11 @@ class UserLibraryItem(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     provider = Column(String, nullable=False, default="rpc", index=True)
     title_id = Column(String, nullable=False, index=True)
-    status = Column(Enum(LibraryStatus), nullable=False, default=LibraryStatus.WATCHING)
+    status = Column(
+        Enum(LibraryStatus, name="librarystatus", create_type=False),
+        nullable=False,
+        default=LibraryStatus.WATCHING,
+    )
     is_favorite = Column(Boolean, default=False, nullable=False)
     created_at = Column(
         DateTime(timezone=True),
@@ -227,7 +231,11 @@ class Anime(Base):
     slug = Column(String, nullable=False, unique=True, index=True)
     description = Column(Text, nullable=True)
     year = Column(Integer, nullable=True, index=True)
-    status = Column(Enum(AnimeStatus), nullable=True, index=True)
+    status = Column(
+        Enum(AnimeStatus, name="animestatus", create_type=False),
+        nullable=True,
+        index=True,
+    )
     poster = Column(String, nullable=True)
     source_name = Column(String, nullable=False, index=True)
     source_id = Column(String, nullable=False, index=True)
@@ -323,4 +331,3 @@ class VideoSource(Base):
     __table_args__ = (
         Index("idx_video_source_episode_priority", "episode_id", "priority"),
     )
-

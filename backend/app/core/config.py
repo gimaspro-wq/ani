@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Type, TypeVar
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator, ValidationError as PydanticValidationError
 
@@ -7,8 +7,19 @@ from pydantic import field_validator, ValidationError as PydanticValidationError
 REFRESH_COOKIE_NAME = "refresh_token"
 
 
-class Settings(BaseSettings):
-    """Application settings loaded from environment variables."""
+class _BaseSettings(BaseSettings):
+    """Shared settings base that tolerates non-runtime env vars."""
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
+
+class Settings(_BaseSettings):
+    """Application runtime settings loaded from environment variables."""
     
     # App
     APP_NAME: str = "Anirohi API"
@@ -43,12 +54,6 @@ class Settings(BaseSettings):
     TRACING_ENABLED: bool = False
     OTEL_SERVICE_NAME: str = "anirohi-api"
     OTEL_EXPORTER_OTLP_ENDPOINT: str = ""
-    
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True
-    )
     
     @field_validator("DATABASE_URL")
     @classmethod
@@ -134,10 +139,20 @@ class Settings(BaseSettings):
         return [origin.strip() for origin in self.ALLOWED_ORIGINS.split(",")]
 
 
-def load_settings() -> Settings:
+class ScriptSettings(_BaseSettings):
+    """Lightweight settings for CLI/alembic contexts."""
+    
+    ENV: Literal["dev", "production", "test"] = "dev"
+    DATABASE_URL: str
+
+
+SettingsT = TypeVar("SettingsT", bound=_BaseSettings)
+
+
+def load_settings(settings_cls: Type[SettingsT] = Settings) -> SettingsT:
     """Load and validate settings."""
     try:
-        return Settings()
+        return settings_cls()
     except PydanticValidationError as e:
         # Re-raise with better error message for missing configs
         error_messages = []
@@ -149,6 +164,11 @@ def load_settings() -> Settings:
         raise RuntimeError(
             "Configuration validation failed:\n" + "\n".join(error_messages)
         ) from e
+
+
+def load_script_settings() -> ScriptSettings:
+    """Load settings for operational scripts without enforcing runtime-only fields."""
+    return load_settings(ScriptSettings)
 
 
 settings = load_settings()
