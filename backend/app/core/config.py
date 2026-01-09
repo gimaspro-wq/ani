@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = "http://localhost:3000"
     
     # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_URL: str
     REDIS_MAX_CONNECTIONS: int = 10
     
     # Rate Limiting
