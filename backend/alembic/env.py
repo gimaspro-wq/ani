@@ -14,7 +14,7 @@ from pathlib import Path
 # Add parent directory to path to import app modules
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from app.core.config import settings
+from app.core.config import load_script_settings
 from app.db.database import Base
 from app.db.models import User, RefreshToken, Anime, Episode, VideoSource  # Import all models
 
@@ -22,8 +22,10 @@ from app.db.models import User, RefreshToken, Anime, Episode, VideoSource  # Imp
 # access to the values within the .ini file in use.
 config = context.config
 
+script_settings = load_script_settings()
+
 # Override sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+config.set_main_option("sqlalchemy.url", script_settings.DATABASE_URL)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

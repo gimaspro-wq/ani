@@ -17,9 +17,23 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Create anime status enum
-    anime_status_enum = postgresql.ENUM('ongoing', 'completed', 'upcoming', name='animestatus')
-    anime_status_enum.create(op.get_bind())
+    # Create anime status enum only if it does not exist (idempotent)
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'animestatus') THEN
+                CREATE TYPE animestatus AS ENUM ('ongoing', 'completed', 'upcoming');
+            END IF;
+        END
+        $$;
+        """
+    )
+    anime_status_enum = postgresql.ENUM(
+        'ongoing', 'completed', 'upcoming',
+        name='animestatus',
+        create_type=False,
+    )
     
     # Create anime table
     op.create_table('anime',
@@ -28,7 +42,7 @@ def upgrade() -> None:
         sa.Column('slug', sa.String(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('year', sa.Integer(), nullable=True),
-        sa.Column('status', sa.Enum('ongoing', 'completed', 'upcoming', name='animestatus'), nullable=True),
+        sa.Column('status', anime_status_enum, nullable=True),
         sa.Column('poster', sa.String(), nullable=True),
         sa.Column('source_name', sa.String(), nullable=False),
         sa.Column('source_id', sa.String(), nullable=False),
@@ -125,5 +139,4 @@ def downgrade() -> None:
     op.drop_table('anime')
     
     # Drop anime status enum
-    anime_status_enum = postgresql.ENUM('ongoing', 'completed', 'upcoming', name='animestatus')
-    anime_status_enum.drop(op.get_bind())
+    op.execute("DROP TYPE IF EXISTS animestatus CASCADE;")

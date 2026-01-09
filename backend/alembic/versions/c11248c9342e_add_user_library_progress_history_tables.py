@@ -19,6 +19,24 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Ensure enum exists before table creation (idempotent for reruns)
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'librarystatus') THEN
+                CREATE TYPE librarystatus AS ENUM ('watching', 'planned', 'completed', 'dropped');
+            END IF;
+        END
+        $$;
+        """
+    )
+    library_status_enum = sa.Enum(
+        'watching', 'planned', 'completed', 'dropped',
+        name='librarystatus',
+        create_type=False,
+    )
+
     # Create user_library_items table
     op.create_table(
         'user_library_items',
@@ -26,7 +44,7 @@ def upgrade() -> None:
         sa.Column('user_id', sa.Integer(), nullable=False),
         sa.Column('provider', sa.String(), nullable=False),
         sa.Column('title_id', sa.String(), nullable=False),
-        sa.Column('status', sa.Enum('WATCHING', 'PLANNED', 'COMPLETED', 'DROPPED', name='librarystatus'), nullable=False),
+        sa.Column('status', library_status_enum, nullable=False),
         sa.Column('is_favorite', sa.Boolean(), nullable=False),
         sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
@@ -109,5 +127,5 @@ def downgrade() -> None:
     op.drop_constraint('uq_user_library_provider_title', 'user_library_items', type_='unique')
     op.drop_table('user_library_items')
     
-    # Drop enum type
-    sa.Enum(name='librarystatus').drop(op.get_bind(), checkfirst=True)
+    # Drop enum type (safe for reruns)
+    op.execute("DROP TYPE IF EXISTS librarystatus CASCADE;")
