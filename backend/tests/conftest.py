@@ -10,6 +10,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -59,19 +60,15 @@ AsyncTestingSessionLocal = async_sessionmaker(
 
 async def _run_migrations() -> None:
     """Apply Alembic migrations to the test database."""
-    await _reset_schema()
     config = Config(str(ROOT_DIR / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", _async_db_url)
     await asyncio.to_thread(command.upgrade, config, "head")
 
 
 async def _truncate_db() -> None:
-    """Clean all application tables between tests."""
-    table_names = ", ".join(Base.metadata.tables.keys())
-    if not table_names:
-        return
-    async with async_engine.begin() as conn:
-        await conn.execute(text(f"TRUNCATE TABLE {table_names} RESTART IDENTITY CASCADE"))
+    """Reset schema between tests by recreating via migrations."""
+    await _reset_schema()
+    await _run_migrations()
 
 
 async def _reset_schema() -> None:
@@ -93,7 +90,7 @@ async def _database() -> Generator[None, None, None]:
 
 
 @pytest_asyncio.fixture(scope="function", autouse=True)
-async def _clean_database() -> Generator[None, None, None]:
+async def _clean_database(_database) -> Generator[None, None, None]:
     """Reset database state before each test."""
     await _truncate_db()
     yield
