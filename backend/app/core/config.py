@@ -175,12 +175,17 @@ class Settings(_BaseSettings):
     
     @classmethod
     def _get_env(cls, info) -> str:
-        """Safely derive ENV value for validators."""
+        """
+        Safely derive ENV value for validators.
+        
+        Validators run independently, so this helper normalizes ENV access with a
+        resilient fallback order (incoming data -> field default -> dev).
+        """
         env_value = info.data.get("ENV")
         if env_value:
             return env_value
         env_field = cls.model_fields.get("ENV")
-        default_env = getattr(env_field, "default", None) if env_field else None
+        default_env = env_field.default if env_field and hasattr(env_field, "default") else None
         if default_env:
             return default_env
         return "dev"
