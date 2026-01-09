@@ -81,7 +81,7 @@ class LibraryRepository(ILibraryRepository):
                 user_id=user_id,
                 provider=provider,
                 title_id=title_id,
-                status=normalize_library_status(status) or LibraryStatus.WATCHING.value,
+                status=normalize_library_status(status) or normalize_library_status(LibraryStatus.WATCHING),
                 is_favorite=is_favorite or False
             )
             self.db.add(item)
