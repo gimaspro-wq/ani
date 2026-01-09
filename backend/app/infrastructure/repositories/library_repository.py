@@ -9,6 +9,15 @@ from app.db.models import UserLibraryItem, LibraryStatus
 from app.domain.interfaces.repositories import ILibraryRepository
 
 
+def _status_value(status: Optional[LibraryStatus]) -> Optional[str]:
+    """Normalize status to database value (lowercase)."""
+    if status is None:
+        return None
+    if isinstance(status, LibraryStatus):
+        return status.value
+    return str(status).lower()
+
+
 class LibraryRepository(ILibraryRepository):
     """Library repository implementation."""
     
@@ -71,7 +80,7 @@ class LibraryRepository(ILibraryRepository):
         if item:
             # Update existing
             if status is not None:
-                item.status = status
+                item.status = _status_value(status)
             if is_favorite is not None:
                 item.is_favorite = is_favorite
             item.updated_at = datetime.now(timezone.utc)
@@ -81,7 +90,7 @@ class LibraryRepository(ILibraryRepository):
                 user_id=user_id,
                 provider=provider,
                 title_id=title_id,
-                status=status or LibraryStatus.WATCHING,
+                status=_status_value(status) or LibraryStatus.WATCHING.value,
                 is_favorite=is_favorite or False
             )
             self.db.add(item)

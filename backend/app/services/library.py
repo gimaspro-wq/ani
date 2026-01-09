@@ -13,6 +13,15 @@ from app.db.models import UserLibraryItem, UserProgress, UserHistory, LibrarySta
 logger = logging.getLogger(__name__)
 
 
+def _status_value(status: Optional[LibraryStatus]) -> Optional[str]:
+    """Normalize status to database value (lowercase)."""
+    if status is None:
+        return None
+    if isinstance(status, LibraryStatus):
+        return status.value
+    return str(status).lower()
+
+
 # Library services
 async def get_user_library(
     db: AsyncSession,
@@ -72,7 +81,7 @@ async def upsert_library_item(
     if item:
         # Update existing
         if status is not None:
-            item.status = status
+            item.status = _status_value(status)
         if is_favorite is not None:
             item.is_favorite = is_favorite
         item.updated_at = datetime.now(timezone.utc)
@@ -82,7 +91,7 @@ async def upsert_library_item(
             user_id=user_id,
             provider=provider,
             title_id=title_id,
-            status=status or LibraryStatus.WATCHING,
+            status=_status_value(status) or LibraryStatus.WATCHING.value,
             is_favorite=is_favorite or False
         )
         db.add(item)
