@@ -53,9 +53,24 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, v: str) -> str:
-        """Validate DATABASE_URL is set."""
+        """Validate and normalize DATABASE_URL for async usage."""
         if not v:
             raise ValueError("DATABASE_URL must be set")
+        
+        if "://" not in v:
+            return v
+        
+        scheme, rest = v.split("://", 1)
+        scheme_lower = scheme.lower()
+        
+        # Idempotent: leave asyncpg URLs untouched
+        if scheme_lower == "postgresql+asyncpg":
+            return v
+        
+        # Normalize any postgres scheme (including psycopg2) to asyncpg
+        if scheme_lower.startswith("postgres"):
+            return f"postgresql+asyncpg://{rest}"
+        
         return v
     
     @field_validator("SECRET_KEY")
@@ -133,4 +148,3 @@ def load_settings() -> Settings:
 
 
 settings = load_settings()
-
