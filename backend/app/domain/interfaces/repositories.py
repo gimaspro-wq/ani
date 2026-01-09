@@ -2,7 +2,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
-from app.db.models import User, UserLibraryItem, UserProgress, UserHistory, LibraryStatus
+from app.domain.entities import User, UserLibraryItem, UserProgress, UserHistory
+from app.domain.enums import LibraryStatus
 
 
 class IUserRepository(ABC):

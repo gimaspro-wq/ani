@@ -1,27 +1,18 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, Cookie, Request
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.use_cases.authentication import AuthenticationService
 from app.core.config import settings, REFRESH_COOKIE_NAME
-from app.core.dependencies import get_current_user
-from app.core.security import create_access_token
+from app.core.container import get_auth_service
+from app.core.errors import ConflictError
 from app.core.rate_limiting import limiter
-from app.db.database import get_db
-from app.db.models import User
 from app.schemas.auth import (
     LoginRequest,
     MessageResponse,
     TokenResponse,
     UserCreate,
     UserResponse,
-)
-from app.services.auth import (
-    authenticate_user,
-    create_refresh_token,
-    create_user,
-    revoke_refresh_token,
-    verify_refresh_token,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -31,19 +22,24 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(
     user_data: UserCreate,
     response: Response,
-    db: Annotated[AsyncSession, Depends(get_db)],
+    auth_service: Annotated[AuthenticationService, Depends(get_auth_service)],
 ):
     """
     Register a new user.
     
     Returns access token in response body and sets refresh token in httpOnly cookie.
     """
-    # Create user
-    user = await create_user(db, user_data)
-    
-    # Create tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = await create_refresh_token(db, user.id)
+    try:
+        user, access_token, refresh_token = await auth_service.register(
+            email=user_data.email,
+            password=user_data.password,
+        )
+    except ConflictError as exc:
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        ) from exc
     
     # Set refresh token cookie with proper security flags
     response.set_cookie(
@@ -65,19 +61,17 @@ async def login(
     login_data: LoginRequest,
     response: Response,
     request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)],
+    auth_service: Annotated[AuthenticationService, Depends(get_auth_service)],
 ):
     """
     Login with email and password.
     
     Returns access token in response body and sets refresh token in httpOnly cookie.
     """
-    # Authenticate user
-    user = await authenticate_user(db, login_data.email, login_data.password)
-    
-    # Create tokens
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token = await create_refresh_token(db, user.id)
+    user, access_token, refresh_token = await auth_service.login(
+        email=login_data.email,
+        password=login_data.password,
+    )
     
     # Set refresh token cookie with proper security flags
     response.set_cookie(
@@ -98,8 +92,8 @@ async def login(
 async def refresh(
     response: Response,
     request: Request,
+    auth_service: Annotated[AuthenticationService, Depends(get_auth_service)],
     refresh_token: Annotated[str | None, Cookie(alias=REFRESH_COOKIE_NAME)] = None,
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Refresh access token using refresh token from cookie.
@@ -113,15 +107,7 @@ async def refresh(
             detail="Refresh token not found"
         )
     
-    # Verify refresh token and get user
-    user = await verify_refresh_token(db, refresh_token)
-    
-    # Revoke old refresh token (rotation)
-    await revoke_refresh_token(db, refresh_token)
-    
-    # Create new tokens
-    access_token = create_access_token(data={"sub": user.id})
-    new_refresh_token = await create_refresh_token(db, user.id)
+    user, access_token, new_refresh_token = await auth_service.refresh(refresh_token)
     
     # Set new refresh token cookie with proper security flags
     response.set_cookie(
@@ -140,15 +126,15 @@ async def refresh(
 @router.post("/logout", response_model=MessageResponse)
 async def logout(
     response: Response,
+    auth_service: Annotated[AuthenticationService, Depends(get_auth_service)],
     refresh_token: Annotated[str | None, Cookie(alias=REFRESH_COOKIE_NAME)] = None,
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Logout user by revoking refresh token and clearing cookie.
     """
     # Revoke refresh token if present
     if refresh_token:
-        await revoke_refresh_token(db, refresh_token)
+        await auth_service.logout(refresh_token)
     
     # Clear refresh token cookie with explicit deletion
     response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/", samesite="lax")

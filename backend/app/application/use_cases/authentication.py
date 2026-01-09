@@ -2,7 +2,7 @@
 from typing import Optional
 
 from app.core.errors import AuthenticationError, ConflictError
-from app.db.models import User
+from app.domain.entities import User
 from app.domain.interfaces.repositories import (
     IUserRepository,
     ISecurityService,

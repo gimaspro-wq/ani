@@ -19,6 +19,10 @@ class AppError(Exception):
         super().__init__(message)
 
 
+# Alias for clarity at the application layer
+ApplicationError = AppError
+
+
 class ValidationError(AppError):
     """Validation error."""
     
@@ -67,11 +71,11 @@ class NotFoundError(AppError):
 class ConflictError(AppError):
     """Conflict error."""
     
-    def __init__(self, message: str = "Resource conflict"):
+    def __init__(self, message: str = "Resource conflict", status_code: int = 409):
         super().__init__(
             code="CONFLICT",
             message=message,
-            status_code=409
+            status_code=status_code
         )
 
 
