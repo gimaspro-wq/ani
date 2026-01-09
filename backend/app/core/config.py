@@ -29,6 +29,8 @@ class Settings(_BaseSettings):
     
     # Database
     DATABASE_URL: str
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
 
     # Security - NO DEFAULTS for secrets
     SECRET_KEY: str
@@ -131,6 +133,44 @@ class Settings(_BaseSettings):
                 "Generate with: openssl rand -hex 32"
             )
         
+        return v
+    
+    @field_validator("DEBUG")
+    @classmethod
+    def validate_debug(cls, v: bool, info) -> bool:
+        """Ensure DEBUG is not enabled in production."""
+        env = info.data.get("ENV", "dev")
+        if env == "production" and v:
+            raise ValueError("DEBUG must be false in production")
+        return v
+    
+    @field_validator("COOKIE_SECURE")
+    @classmethod
+    def validate_cookie_secure(cls, v: bool, info) -> bool:
+        """Require secure cookies in production."""
+        env = info.data.get("ENV", "dev")
+        if env == "production" and not v:
+            raise ValueError("COOKIE_SECURE must be true in production")
+        return v
+    
+    @field_validator("RATE_LIMIT_ENABLED")
+    @classmethod
+    def validate_rate_limit_enabled(cls, v: bool, info) -> bool:
+        """Prevent disabling rate limiting in production."""
+        env = info.data.get("ENV", "dev")
+        if env == "production" and not v:
+            raise ValueError("RATE_LIMIT_ENABLED cannot be disabled in production")
+        return v
+    
+    @field_validator("ALLOWED_ORIGINS")
+    @classmethod
+    def validate_allowed_origins(cls, v: str, info) -> str:
+        """Disallow wildcard CORS in production."""
+        env = info.data.get("ENV", "dev")
+        if env == "production":
+            origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+            if "*" in origins:
+                raise ValueError("ALLOWED_ORIGINS cannot be '*' in production")
         return v
     
     @property

@@ -36,6 +36,10 @@ docker compose logs -f backend
 
 # Verify health
 curl http://localhost:8000/health
+
+# The backend container uses Gunicorn with Uvicorn workers for production.
+# For local development with hot reload, use the dev override:
+# docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
 ### 2. Kubernetes (Recommended for Scale)

@@ -17,10 +17,11 @@ from app.core.exception_handlers import (
     validation_error_handler,
 )
 from app.core.logging_config import setup_logging
-from app.core.middleware import SecurityHeadersMiddleware, TraceIDMiddleware
+from app.core.middleware import AccessLogMiddleware, SecurityHeadersMiddleware, TraceIDMiddleware
 from app.core.rate_limiting import limiter, RateLimitMiddleware
 from app.core.tracing import setup_tracing
 from app.infrastructure.adapters.redis_client import redis_client
+from app.db.database import engine
 
 
 
@@ -78,6 +79,11 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass  # Ignore shutdown errors
     
+    try:
+        await engine.dispose()
+    except Exception:
+        pass  # Ignore shutdown errors
+    
     logger.info("Application shutdown complete")
 
 
@@ -109,7 +115,10 @@ if settings.RATE_LIMIT_ENABLED:
     app.add_middleware(RateLimitMiddleware)
     app.state.limiter = limiter
 
-# 4. CORS (innermost, closest to routes)
+# 4. Access logging
+app.add_middleware(AccessLogMiddleware)
+
+# 5. CORS (innermost, closest to routes)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,

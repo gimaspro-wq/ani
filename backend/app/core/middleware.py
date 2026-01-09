@@ -30,6 +30,24 @@ class TraceIDMiddleware(BaseHTTPMiddleware):
         return response
 
 
+class AccessLogMiddleware(BaseHTTPMiddleware):
+    """Emit minimal structured access logs."""
+    
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        logger.info(
+            "Request completed",
+            extra={
+                "extra_fields": {
+                    "method": request.method,
+                    "path": request.url.path,
+                    "status_code": response.status_code,
+                }
+            },
+        )
+        return response
+
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
     
