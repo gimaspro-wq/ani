@@ -1,35 +1,14 @@
 from datetime import datetime, timezone
 import uuid
-import json
+import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, Index, event
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint, Index
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.mutable import MutableList
-import enum
 
 from app.db.database import Base
 # Import RBAC association table
 from app.db.rbac_models import user_roles
-
-
-# Custom JSON-backed array type for SQLite compatibility
-class JSONEncodedList(Text):
-    """JSON-encoded list column type for SQLite."""
-    
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        if dialect.name == 'sqlite':
-            return json.dumps(value)
-        return value
-    
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        if dialect.name == 'sqlite':
-            return json.loads(value)
-        return value
 
 
 class LibraryStatus(str, enum.Enum):
@@ -38,6 +17,15 @@ class LibraryStatus(str, enum.Enum):
     PLANNED = "planned"
     COMPLETED = "completed"
     DROPPED = "dropped"
+
+
+def normalize_library_status(status: LibraryStatus | str | None) -> str | None:
+    """Return canonical lowercase status value for DB storage."""
+    if status is None:
+        return None
+    if isinstance(status, LibraryStatus):
+        return status.value
+    return str(status).lower()
 
 
 class User(Base):
@@ -125,7 +113,13 @@ class UserLibraryItem(Base):
     provider = Column(String, nullable=False, default="rpc", index=True)
     title_id = Column(String, nullable=False, index=True)
     status = Column(
-        Enum(LibraryStatus, name="librarystatus", create_type=False),
+        Enum(
+            LibraryStatus,
+            name="librarystatus",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+            validate_strings=True,
+        ),
         nullable=False,
         default=LibraryStatus.WATCHING,
     )
@@ -232,15 +226,21 @@ class Anime(Base):
     description = Column(Text, nullable=True)
     year = Column(Integer, nullable=True, index=True)
     status = Column(
-        Enum(AnimeStatus, name="animestatus", create_type=False),
+        Enum(
+            AnimeStatus,
+            name="animestatus",
+            create_type=False,
+            values_callable=lambda obj: [e.value for e in obj],
+            validate_strings=True,
+        ),
         nullable=True,
         index=True,
     )
     poster = Column(String, nullable=True)
     source_name = Column(String, nullable=False, index=True)
     source_id = Column(String, nullable=False, index=True)
-    genres = Column(JSONEncodedList().with_variant(ARRAY(String), 'postgresql'), nullable=True)
-    alternative_titles = Column(JSONEncodedList().with_variant(ARRAY(String), 'postgresql'), nullable=True)
+    genres = Column(ARRAY(String), nullable=True)
+    alternative_titles = Column(ARRAY(String), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False, index=True)
     admin_modified = Column(Boolean, default=False, nullable=False)  # Track if admin modified this record
     created_at = Column(

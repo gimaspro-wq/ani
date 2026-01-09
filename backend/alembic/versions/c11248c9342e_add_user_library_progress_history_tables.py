@@ -19,22 +19,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Ensure enum exists before table creation (idempotent for reruns)
-    op.execute(
-        """
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'librarystatus') THEN
-                CREATE TYPE librarystatus AS ENUM ('watching', 'planned', 'completed', 'dropped');
-            END IF;
-        END
-        $$;
-        """
-    )
     library_status_enum = sa.Enum(
         'watching', 'planned', 'completed', 'dropped',
         name='librarystatus',
-        create_type=False,
+        create_type=True,
     )
 
     # Create user_library_items table

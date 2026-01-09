@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import UserLibraryItem, LibraryStatus
+from app.db.models import UserLibraryItem, LibraryStatus, normalize_library_status
 from app.domain.interfaces.repositories import ILibraryRepository
 
 
@@ -71,7 +71,7 @@ class LibraryRepository(ILibraryRepository):
         if item:
             # Update existing
             if status is not None:
-                item.status = status
+                item.status = normalize_library_status(status)
             if is_favorite is not None:
                 item.is_favorite = is_favorite
             item.updated_at = datetime.now(timezone.utc)
@@ -81,7 +81,7 @@ class LibraryRepository(ILibraryRepository):
                 user_id=user_id,
                 provider=provider,
                 title_id=title_id,
-                status=status or LibraryStatus.WATCHING,
+                status=normalize_library_status(status) or normalize_library_status(LibraryStatus.WATCHING),
                 is_favorite=is_favorite or False
             )
             self.db.add(item)

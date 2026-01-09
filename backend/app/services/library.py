@@ -8,7 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from fastapi import HTTPException, status
 
-from app.db.models import UserLibraryItem, UserProgress, UserHistory, LibraryStatus
+from app.db.models import (
+    UserLibraryItem,
+    UserProgress,
+    UserHistory,
+    LibraryStatus,
+    normalize_library_status,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +78,7 @@ async def upsert_library_item(
     if item:
         # Update existing
         if status is not None:
-            item.status = status
+            item.status = normalize_library_status(status)
         if is_favorite is not None:
             item.is_favorite = is_favorite
         item.updated_at = datetime.now(timezone.utc)
@@ -82,7 +88,7 @@ async def upsert_library_item(
             user_id=user_id,
             provider=provider,
             title_id=title_id,
-            status=status or LibraryStatus.WATCHING,
+            status=normalize_library_status(status) or normalize_library_status(LibraryStatus.WATCHING),
             is_favorite=is_favorite or False
         )
         db.add(item)
