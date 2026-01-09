@@ -53,7 +53,10 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def validate_database_url(cls, v: str) -> str:
-        """Validate and normalize DATABASE_URL for async usage."""
+        """Validate and normalize DATABASE_URL for async usage.
+        
+        Non-URL DSN strings (without '://') pass through unchanged.
+        """
         if not v:
             raise ValueError("DATABASE_URL must be set")
         
@@ -67,8 +70,8 @@ class Settings(BaseSettings):
         if scheme_lower == "postgresql+asyncpg":
             return v
         
-        # Normalize any postgres scheme (including psycopg2) to asyncpg
-        if scheme_lower.startswith("postgres"):
+        # Normalize common postgres schemes (including psycopg2) to asyncpg
+        if scheme_lower in {"postgresql", "postgres"} or scheme_lower.startswith("postgresql+psycopg"):
             return f"postgresql+asyncpg://{rest}"
         
         return v
