@@ -17,7 +17,8 @@ class UserRepository(IUserRepository):
     def __init__(self, db: AsyncSession):
         self.db = db
     
-    def _to_domain(self, user: UserModel | None) -> Optional[User]:
+    @staticmethod
+    def _to_domain(user: UserModel | None) -> Optional[User]:
         if not user:
             return None
         return User(
@@ -48,7 +49,9 @@ class UserRepository(IUserRepository):
         self.db.add(user)
         await self.db.commit()
         await self.db.refresh(user)
-        return self._to_domain(user)
+        domain_user = self._to_domain(user)
+        assert domain_user is not None
+        return domain_user
     
     async def check_permissions(self, user_id: int, permission_code: str) -> bool:
         """Check if user has permission."""

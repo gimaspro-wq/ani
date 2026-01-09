@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Response, Cookie, Request
 from app.application.use_cases.authentication import AuthenticationService
 from app.core.config import settings, REFRESH_COOKIE_NAME
 from app.core.container import get_auth_service
+from app.core.errors import ConflictError
 from app.core.rate_limiting import limiter
 from app.schemas.auth import (
     LoginRequest,
@@ -28,10 +29,17 @@ async def register(
     
     Returns access token in response body and sets refresh token in httpOnly cookie.
     """
-    user, access_token, refresh_token = await auth_service.register(
-        email=user_data.email,
-        password=user_data.password,
-    )
+    try:
+        user, access_token, refresh_token = await auth_service.register(
+            email=user_data.email,
+            password=user_data.password,
+        )
+    except ConflictError as exc:
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=exc.message,
+        ) from exc
     
     # Set refresh token cookie with proper security flags
     response.set_cookie(

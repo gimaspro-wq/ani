@@ -1,8 +1,8 @@
 """Domain interfaces for repositories and services."""
 from abc import ABC, abstractmethod
-from typing import Optional, List, Any
+from typing import Optional, List
 
-from app.domain.entities import User
+from app.domain.entities import User, UserLibraryItem, UserProgress, UserHistory
 from app.domain.enums import LibraryStatus
 
 
@@ -40,7 +40,7 @@ class ILibraryRepository(ABC):
         provider: str,
         status_filter: Optional[LibraryStatus],
         favorites_only: bool
-    ) -> List[Any]:
+    ) -> List[UserLibraryItem]:
         """Get user's library items."""
         pass
     
@@ -50,7 +50,7 @@ class ILibraryRepository(ABC):
         user_id: int,
         title_id: str,
         provider: str
-    ) -> Optional[Any]:
+    ) -> Optional[UserLibraryItem]:
         """Get specific library item."""
         pass
     
@@ -62,7 +62,7 @@ class ILibraryRepository(ABC):
         status: Optional[LibraryStatus],
         is_favorite: Optional[bool],
         provider: str
-    ) -> Any:
+    ) -> UserLibraryItem:
         """Create or update library item."""
         pass
     

@@ -18,6 +18,18 @@ class RefreshTokenService(IRefreshTokenService):
     def __init__(self, db: AsyncSession, security_service: ISecurityService):
         self.db = db
         self.security = security_service
+
+    @staticmethod
+    def _to_domain(user: UserModel | None) -> Optional[User]:
+        if not user:
+            return None
+        return User(
+            id=user.id,
+            email=user.email,
+            hashed_password=user.hashed_password,
+            is_active=user.is_active,
+            created_at=user.created_at,
+        )
     
     async def create_refresh_token(self, user_id: int) -> str:
         """Create refresh token."""
@@ -57,13 +69,7 @@ class RefreshTokenService(IRefreshTokenService):
         # Check each token hash
         for db_token, user in tokens_with_users:
             if self.security.verify_password(token, db_token.token_hash):
-                return User(
-                    id=user.id,
-                    email=user.email,
-                    hashed_password=user.hashed_password,
-                    is_active=user.is_active,
-                    created_at=user.created_at,
-                )
+                return self._to_domain(user)
         
         return None
     
