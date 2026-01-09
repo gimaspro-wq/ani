@@ -1,4 +1,7 @@
-"""Event handlers for user progress read model."""
+"""Event handlers for user progress read model.
+
+Operational use only: invoked by rebuild workflows to populate Redis.
+"""
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

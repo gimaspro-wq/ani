@@ -1,4 +1,7 @@
-"""Event handlers for anime read models."""
+"""Event handlers for anime read models.
+
+Operational use only: invoke via rebuild workflows to populate Redis; not called by request handlers.
+"""
 from datetime import datetime, timezone
 from typing import Optional
 
