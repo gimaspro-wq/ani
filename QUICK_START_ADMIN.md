@@ -1,5 +1,7 @@
 # Admin Panel Quick Start Guide
 
+> Admin-only quick start. Skip this for public frontend work.
+
 This guide will help you get the admin panel up and running in just a few minutes.
 
 ## Prerequisites

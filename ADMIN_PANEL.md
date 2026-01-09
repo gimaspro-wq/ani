@@ -1,5 +1,7 @@
 # Admin Panel Documentation
 
+> Admin-only reference. This content is not used by the public frontend.
+
 ## Overview
 
 The admin panel is a web-based interface for managing anime content in the Anirohi platform. It provides full control over anime, episodes, and video sources, with priority over the external parser.
