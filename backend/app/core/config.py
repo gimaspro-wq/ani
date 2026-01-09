@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     
     # Database
     DATABASE_URL: str
-    
+    AUTO_RUN_MIGRATIONS: bool = False
+
     # Security - NO DEFAULTS for secrets
     SECRET_KEY: str
     INTERNAL_TOKEN: str  # Token for internal API (parser access)
