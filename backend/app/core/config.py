@@ -61,6 +61,7 @@ class Settings(BaseSettings):
             raise ValueError("DATABASE_URL must be set")
         
         if "://" not in v:
+            # Allow driver-specific DSN strings to pass through untouched
             return v
         
         scheme, rest = v.split("://", 1)
@@ -71,7 +72,7 @@ class Settings(BaseSettings):
             return v
         
         # Normalize common postgres schemes (including psycopg2) to asyncpg
-        if scheme_lower in {"postgresql", "postgres"} or scheme_lower.startswith("postgresql+psycopg"):
+        if scheme_lower in {"postgresql", "postgres", "postgresql+psycopg2"} or scheme_lower.startswith("postgresql+psycopg"):
             return f"postgresql+asyncpg://{rest}"
         
         return v
