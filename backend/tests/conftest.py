@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
+import pytest_asyncio
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
@@ -56,12 +57,12 @@ AsyncTestingSessionLocal = async_sessionmaker(
 )
 
 
-def _run_migrations() -> None:
+async def _run_migrations() -> None:
     """Apply Alembic migrations to the test database."""
-    asyncio.run(_reset_schema())
+    await _reset_schema()
     config = Config(str(ROOT_DIR / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", _async_db_url)
-    command.upgrade(config, "head")
+    await asyncio.to_thread(command.upgrade, config, "head")
 
 
 async def _truncate_db() -> None:
@@ -82,19 +83,19 @@ async def _reset_schema() -> None:
         await conn.execute(text("CREATE SCHEMA public;"))
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _database() -> Generator[None, None, None]:
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _database() -> Generator[None, None, None]:
     """Ensure database is migrated and container is stopped after tests."""
-    _run_migrations()
+    await _run_migrations()
     yield
-    asyncio.run(async_engine.dispose())
+    await async_engine.dispose()
     postgres.stop()
 
 
-@pytest.fixture(scope="function", autouse=True)
-def _clean_database() -> Generator[None, None, None]:
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def _clean_database() -> Generator[None, None, None]:
     """Reset database state before each test."""
-    asyncio.run(_truncate_db())
+    await _truncate_db()
     yield
 
 
