@@ -192,8 +192,8 @@ Source (Kodik `/list`, `/search`) → HTTPClient (parser/clients/__init__.py HTT
 
 Data shapes:  
 - Kodik list_anime input: query params; output: JSON with `results`, `total` (dict).  
-- parse_episodes input: list of Kodik result dicts; output: list of dicts {number:int, title:Optional[str], translations:[{translation_id, translation_title, link}]}. Loss: qualities, voice types, season id, episode timestamps dropped.  
-- Shikimori get_anime input: path param id; output: JSON anime; parse_anime_data outputs backend payload fields {source_id, title, alternative_titles?, description?, year?, status?, poster?, genres?}. Loss: episodes_aired, duration, rating, scores, next_episode_at.  
+- parse_episodes input: list of Kodik result dicts; output: list of dicts {number: int, title: Optional[str], translations: [{translation_id: int | None, translation_title: str, link: str}]}. Loss: qualities, voice types, season id, episode timestamps dropped.  
+- Shikimori get_anime input: path param id; output: JSON anime; parse_anime_data outputs backend payload fields {source_id, title, alternative_titles (optional), description (optional), year (optional), status (optional), poster (optional), genres (optional)}. Loss: episodes_aired, duration, rating, scores, next_episode_at.  
 - Backend import_anime/episodes/video payloads follow parser/README schemas.  
 - State: JSON {last_run, last_page, processed_anime{source_id:{title, episodes_count, timestamp}}}. last_page not consumed; processed_anime prevents duplicate process_anime in same run and future runs.  
 
