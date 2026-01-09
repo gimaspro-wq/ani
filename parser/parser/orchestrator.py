@@ -9,7 +9,6 @@ from parser.clients.shikimori import ShikimoriClient
 from parser.clients.backend import BackendClient
 from parser.utils import (
     RateLimiter,
-    compute_diff,
     generate_source_id,
     generate_episode_source_id,
     normalize_video_source,
@@ -68,7 +67,6 @@ class ParserOrchestrator:
         """
         async with self.semaphore:
             source_id = generate_source_id(shikimori_id)
-            previous_entry = self.state_manager.get_anime_entry(source_id)
             
             try:
                 # Step 1: Fetch metadata from Shikimori
@@ -92,19 +90,12 @@ class ParserOrchestrator:
                     "source_id": anime_data.get("source_id"),
                 }
                 
-                previous_anime_payload = previous_entry.get("anime_payload")
-                anime_diff = compute_diff(anime_payload, previous_anime_payload)
-                if previous_anime_payload is None or anime_diff:
-                    if anime_diff:
-                        logger.debug(f"Anime diff for {source_id}: {anime_diff}")
-                    logger.info(f"Importing anime: {anime_data['title']}")
-                    success = await self.backend_client.import_anime(anime_data)
-                    
-                    if not success:
-                        logger.error(f"Failed to import anime {anime_data['title']}")
-                        return False
-                else:
-                    logger.info(f"Anime {source_id} up-to-date, skipping import")
+                logger.info(f"Importing anime: {anime_data['title']}")
+                success = await self.backend_client.import_anime(anime_data)
+                
+                if not success:
+                    logger.error(f"Failed to import anime {anime_data['title']}")
+                    return False
                 
                 # Step 3: Fetch episodes from Kodik
                 logger.info(f"Fetching episodes for anime {shikimori_id} from Kodik")
@@ -132,9 +123,6 @@ class ParserOrchestrator:
                 
                 # Step 4: Import episodes to backend (only changed/new)
                 episodes_for_import = []
-                episodes_state: dict[str, dict[str, Any]] = previous_entry.get("episodes", {})
-                videos_state: dict[str, dict[str, Any]] = previous_entry.get("videos", {})
-                
                 episode_videos: dict[str, list[dict[str, Any]]] = {}
                 
                 for ep in episodes_data:
@@ -162,12 +150,7 @@ class ParserOrchestrator:
                     
                     episode_payload = _build_episode_payload(episode_source_id, ep, is_available)
                     
-                    previous_episode_payload = episodes_state.get(episode_source_id)
-                    ep_diff = compute_diff(episode_payload, previous_episode_payload)
-                    if previous_episode_payload is None or ep_diff:
-                        if ep_diff:
-                            logger.debug(f"Episode diff for {episode_source_id}: {ep_diff}")
-                        episodes_for_import.append(episode_payload)
+                    episodes_for_import.append(episode_payload)
                         episodes_state[episode_source_id] = episode_payload
                 
                 if episodes_for_import:
@@ -199,22 +182,12 @@ class ParserOrchestrator:
                     
                     for player_data in videos_for_episode:
                         key = _video_key(episode_source_id, player_data)
-                        previous_video_payload = videos_state.get(key)
-                        video_diff = compute_diff(player_data, previous_video_payload)
-                        if previous_video_payload is not None and not video_diff:
-                            logger.debug(
-                                f"Video already imported for episode {episode_source_id}: {player_data['url']}"
-                            )
-                            continue
-                        
                         success = await self.backend_client.import_video(
                             source_episode_id=episode_source_id,
                             player_data=player_data,
                         )
                         if not success:
                             video_import_errors += 1
-                        else:
-                            videos_state[key] = player_data
                             latest_video_payloads[key] = player_data
                 
                 if video_import_errors > 0:
@@ -223,7 +196,14 @@ class ParserOrchestrator:
                     )
                 
                 # Persist latest payloads for idempotency on subsequent runs
-                latest_episode_payloads: dict[str, dict[str, Any]] = dict(episodes_state)
+                latest_episode_payloads: dict[str, dict[str, Any]] = {
+                    generate_episode_source_id(source_id, ep["number"]): _build_episode_payload(
+                        generate_episode_source_id(source_id, ep["number"]),
+                        ep,
+                        bool(episode_videos.get(generate_episode_source_id(source_id, ep["number"]), [])),
+                    )
+                    for ep in episodes_data
+                }
                 # Mark as processed with payload snapshots
                 self.state_manager.mark_anime_processed(
                     source_id=source_id,

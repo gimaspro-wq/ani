@@ -102,8 +102,8 @@ def normalize_video_source(
     trimmed = url.strip()
     if not trimmed:
         return None
-    # Enforce HLS player-ready link (allow query suffixes)
-    if ".m3u8" not in trimmed.lower():
+    # Enforce HLS player-ready link (strict .m3u8)
+    if not trimmed.lower().endswith(".m3u8"):
         return None
     return {
         "type": "hls",
