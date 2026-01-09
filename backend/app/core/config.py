@@ -180,8 +180,9 @@ class Settings(_BaseSettings):
         if env_value:
             return env_value
         env_field = cls.model_fields.get("ENV")
-        if env_field and env_field.default:
-            return env_field.default
+        default_env = getattr(env_field, "default", None) if env_field else None
+        if default_env:
+            return default_env
         return "dev"
     
     @property

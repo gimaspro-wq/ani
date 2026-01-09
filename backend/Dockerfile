@@ -47,4 +47,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
 
 # Run application with Gunicorn + Uvicorn workers for production
-CMD ["sh", "-c", "gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --workers ${GUNICORN_WORKERS:-4} --worker-connections ${GUNICORN_WORKER_CONNECTIONS:-1000} --max-requests ${GUNICORN_MAX_REQUESTS:-1000} --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER:-100}"]
+CMD ["sh", "-c", "gunicorn app.main:app -k uvicorn.workers.UvicornWorker \\\n  --bind 0.0.0.0:8000 \\\n  --workers ${GUNICORN_WORKERS:-4} \\\n  --worker-connections ${GUNICORN_WORKER_CONNECTIONS:-1000} \\\n  --max-requests ${GUNICORN_MAX_REQUESTS:-1000} \\\n  --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER:-100}"]
