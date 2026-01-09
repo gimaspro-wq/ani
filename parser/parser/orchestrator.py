@@ -1,13 +1,19 @@
 """Main orchestrator for the parser service."""
 import asyncio
 import logging
-from typing import Optional
+from typing import Optional, Any
 
 from parser.config import settings
 from parser.clients.kodik import KodikClient
 from parser.clients.shikimori import ShikimoriClient
 from parser.clients.backend import BackendClient
-from parser.utils import RateLimiter, generate_source_id, generate_episode_source_id
+from parser.utils import (
+    RateLimiter,
+    compute_diff,
+    generate_source_id,
+    generate_episode_source_id,
+    normalize_video_source,
+)
 from parser.state import StateManager
 
 logger = logging.getLogger(__name__)
@@ -43,11 +49,7 @@ class ParserOrchestrator:
         """
         async with self.semaphore:
             source_id = generate_source_id(shikimori_id)
-            
-            # Check if already processed (idempotent)
-            if self.state_manager.is_anime_processed(source_id):
-                logger.debug(f"Anime {source_id} already processed, skipping")
-                return True
+            previous_entry = self.state_manager.get_anime_entry(source_id)
             
             try:
                 # Step 1: Fetch metadata from Shikimori
@@ -60,14 +62,30 @@ class ParserOrchestrator:
                 
                 # Parse Shikimori data
                 anime_data = self.shikimori_client.parse_anime_data(shikimori_data)
+                anime_payload = {
+                    "title": anime_data["title"],
+                    "alternative_titles": anime_data.get("alternative_titles"),
+                    "description": anime_data.get("description"),
+                    "year": anime_data.get("year"),
+                    "status": anime_data.get("status"),
+                    "poster": anime_data.get("poster"),
+                    "genres": anime_data.get("genres"),
+                    "source_id": anime_data.get("source_id"),
+                }
                 
-                # Step 2: Import anime to backend
-                logger.info(f"Importing anime: {anime_data['title']}")
-                success = await self.backend_client.import_anime(anime_data)
-                
-                if not success:
-                    logger.error(f"Failed to import anime {anime_data['title']}")
-                    return False
+                previous_anime_payload = previous_entry.get("anime_payload")
+                anime_diff = compute_diff(anime_payload, previous_anime_payload)
+                if previous_anime_payload is None or anime_diff:
+                    if anime_diff:
+                        logger.debug(f"Anime diff for {source_id}: {anime_diff}")
+                    logger.info(f"Importing anime: {anime_data['title']}")
+                    success = await self.backend_client.import_anime(anime_data)
+                    
+                    if not success:
+                        logger.error(f"Failed to import anime {anime_data['title']}")
+                        return False
+                else:
+                    logger.info(f"Anime {source_id} up-to-date, skipping import")
                 
                 # Step 3: Fetch episodes from Kodik
                 logger.info(f"Fetching episodes for anime {shikimori_id} from Kodik")
@@ -93,50 +111,86 @@ class ParserOrchestrator:
                 
                 logger.info(f"Found {len(episodes_data)} episodes for anime {shikimori_id}")
                 
-                # Step 4: Import episodes to backend
+                # Step 4: Import episodes to backend (only changed/new)
                 episodes_for_import = []
-                for ep in episodes_data:
-                    episode_source_id = generate_episode_source_id(source_id, ep["number"])
-                    episodes_for_import.append({
-                        "source_episode_id": episode_source_id,
-                        "number": ep["number"],
-                        "title": ep.get("title"),
-                        "is_available": True,
-                    })
+                episodes_state: dict[str, dict[str, Any]] = previous_entry.get("episodes", {})
+                videos_state: dict[str, dict[str, Any]] = previous_entry.get("videos", {})
                 
-                logger.info(f"Importing {len(episodes_for_import)} episodes for anime {source_id}")
-                success = await self.backend_client.import_episodes(
-                    anime_source_id=source_id,
-                    episodes=episodes_for_import,
-                )
+                episode_videos: dict[str, list[dict[str, Any]]] = {}
                 
-                if not success:
-                    logger.error(f"Failed to import episodes for anime {source_id}")
-                    return False
-                
-                # Step 5: Import video sources for each episode
-                video_import_errors = 0
                 for ep in episodes_data:
                     episode_source_id = generate_episode_source_id(source_id, ep["number"])
                     
-                    # Check if episode has any translations
-                    if not ep.get("translations"):
+                    translations = ep.get("translations") or []
+                    normalized_videos = []
+                    seen_urls: set[str] = set()
+                    for idx, translation in enumerate(translations):
+                        player = normalize_video_source(
+                            translation.get("link"),
+                            "kodik",
+                            idx,
+                        )
+                        if player is None:
+                            continue
+                        key = f"{episode_source_id}|{player['url']}|{player['source_name']}"
+                        if key in seen_urls:
+                            continue
+                        seen_urls.add(key)
+                        normalized_videos.append(player)
+                    episode_videos[episode_source_id] = normalized_videos
+                    
+                    is_available = bool(normalized_videos)
+                    
+                    episode_payload = {
+                        "source_episode_id": episode_source_id,
+                        "number": ep["number"],
+                        "title": ep.get("title"),
+                        "is_available": is_available,
+                    }
+                    
+                    previous_episode_payload = episodes_state.get(episode_source_id)
+                    ep_diff = compute_diff(episode_payload, previous_episode_payload)
+                    if previous_episode_payload is None or ep_diff:
+                        if ep_diff:
+                            logger.debug(f"Episode diff for {episode_source_id}: {ep_diff}")
+                        episodes_for_import.append(episode_payload)
+                
+                if episodes_for_import:
+                    logger.info(f"Importing {len(episodes_for_import)} episodes for anime {source_id}")
+                    success = await self.backend_client.import_episodes(
+                        anime_source_id=source_id,
+                        episodes=episodes_for_import,
+                    )
+                    
+                    if not success:
+                        logger.error(f"Failed to import episodes for anime {source_id}")
+                        return False
+                else:
+                    logger.info(f"No episode changes detected for anime {source_id}, skipping import")
+                
+                # Step 5: Import video sources for each episode (only changed/new)
+                video_import_errors = 0
+                for ep in episodes_data:
+                    episode_source_id = generate_episode_source_id(source_id, ep["number"])
+                    videos_for_episode = episode_videos.get(episode_source_id, [])
+                    
+                    if not videos_for_episode:
                         logger.warning(
                             f"No videos for episode {ep['number']} of anime {source_id}, "
                             "but episode remains"
                         )
                         continue
                     
-                    # Import all translations/players for this episode
-                    for idx, translation in enumerate(ep.get("translations", [])):
-                        player_data = {
-                            "type": "iframe",
-                            "url": translation["link"],
-                            "source_name": "kodik",  # Player source name as per requirement
-                            "priority": idx,  # Lower index = higher priority
-                        }
+                    for player_data in videos_for_episode:
+                        key = f"{episode_source_id}|{player_data['url']}|{player_data['source_name']}"
+                        previous_video_payload = videos_state.get(key)
+                        video_diff = compute_diff(player_data, previous_video_payload)
+                        if previous_video_payload is not None and not video_diff:
+                            logger.debug(
+                                f"Video already imported for episode {episode_source_id}: {player_data['url']}"
+                            )
+                            continue
                         
-                        # Skip this video on error, but continue with others
                         success = await self.backend_client.import_video(
                             source_episode_id=episode_source_id,
                             player_data=player_data,
@@ -149,11 +203,31 @@ class ParserOrchestrator:
                         f"Failed to import {video_import_errors} video(s) for anime {source_id}"
                     )
                 
-                # Mark as processed
+                # Persist latest payloads for idempotency on subsequent runs
+                latest_episode_payloads = {
+                    generate_episode_source_id(source_id, ep["number"]): {
+                        "source_episode_id": generate_episode_source_id(source_id, ep["number"]),
+                        "number": ep["number"],
+                        "title": ep.get("title"),
+                        "is_available": bool(episode_videos.get(generate_episode_source_id(source_id, ep["number"]), [])),
+                    }
+                    for ep in episodes_data
+                }
+                latest_video_payloads = {}
+                for ep in episodes_data:
+                    episode_source_id = generate_episode_source_id(source_id, ep["number"])
+                    for player_data in episode_videos.get(episode_source_id, []):
+                        key = f"{episode_source_id}|{player_data['url']}|{player_data['source_name']}"
+                        latest_video_payloads[key] = player_data
+                
+                # Mark as processed with payload snapshots
                 self.state_manager.mark_anime_processed(
                     source_id=source_id,
                     title=anime_data["title"],
                     episodes_count=len(episodes_data),
+                    anime_payload=anime_payload,
+                    episodes_payload=latest_episode_payloads,
+                    videos_payload=latest_video_payloads,
                 )
                 
                 logger.info(

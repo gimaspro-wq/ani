@@ -77,6 +77,9 @@ class StateManager:
         source_id: str,
         title: str,
         episodes_count: int = 0,
+        anime_payload: Optional[Dict[str, Any]] = None,
+        episodes_payload: Optional[Dict[str, Dict[str, Any]]] = None,
+        videos_payload: Optional[Dict[str, Dict[str, Any]]] = None,
     ):
         """
         Mark anime as processed.
@@ -85,12 +88,23 @@ class StateManager:
             source_id: The anime source ID
             title: The anime title
             episodes_count: Number of episodes imported
+            anime_payload: Last imported anime payload
+            episodes_payload: Mapping of episode_id -> payload
+            videos_payload: Mapping of video key -> payload
         """
-        self.state["processed_anime"][source_id] = {
+        entry = self.state["processed_anime"].get(source_id, {})
+        entry.update({
             "title": title,
             "episodes_count": episodes_count,
             "timestamp": datetime.utcnow().isoformat(),
-        }
+        })
+        if anime_payload is not None:
+            entry["anime_payload"] = anime_payload
+        if episodes_payload is not None:
+            entry["episodes"] = episodes_payload
+        if videos_payload is not None:
+            entry["videos"] = videos_payload
+        self.state["processed_anime"][source_id] = entry
     
     def is_anime_processed(self, source_id: str) -> bool:
         """
@@ -103,6 +117,18 @@ class StateManager:
             True if anime has been processed
         """
         return source_id in self.state.get("processed_anime", {})
+
+    def get_anime_entry(self, source_id: str) -> Dict[str, Any]:
+        """
+        Get stored state entry for anime.
+
+        Args:
+            source_id: Anime source ID
+
+        Returns:
+            Entry dict (empty if missing)
+        """
+        return self.state.get("processed_anime", {}).get(source_id, {})
     
     def get_last_page(self) -> int:
         """
