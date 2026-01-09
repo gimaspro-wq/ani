@@ -1,4 +1,7 @@
-"""Event handlers for user library read model."""
+"""Event handlers for user library read model.
+
+Operational use only: invoked by rebuild workflows to populate Redis.
+"""
 from datetime import datetime, timezone
 from typing import Optional
 

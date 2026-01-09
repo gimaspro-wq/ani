@@ -1,4 +1,7 @@
-"""RBAC permission checking utilities."""
+"""RBAC permission checking utilities.
+
+Note: Not currently wired into routers; retained for potential future use.
+"""
 import logging
 from functools import wraps
 from typing import Callable, Any

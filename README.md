@@ -1,65 +1,53 @@
 # Ani monorepo
 
-## Project overview
+Production-ready stack for anime catalog/browsing with a FastAPI backend, Next.js frontend, and a parser/importer. Contracts are stable; write-path logic must not change.
 
-Ani is a monorepo containing three subsystems:
-- **frontend**: Next.js app that serves the public anime catalog/watch experience and a legacy admin panel.
-- **backend**: FastAPI service that powers authentication and data APIs. Treat as stable; no contract changes here.
-- **parser**: Python importer that keeps the catalog in sync with external sources.
+## Components
+- **backend/** — FastAPI service (auth, library/history/progress, anime, admin/internal import) plus read-only Redis-backed endpoints.
+- **frontend/** — Next.js App Router. Public surface under `src/app/**`; legacy admin under `src/app/admin/**` using legacy orpc/query stacks.
+- **parser/** — Python importer that ingests external data (Kodik/Shikimori) into the backend via internal endpoints.
 
-This README is the single source of truth for repository structure and local workflows.
+## Documentation
+- [`docs/architecture.md`](docs/architecture.md)
+- [`docs/read-write-split.md`](docs/read-write-split.md)
+- [`docs/cache-first.md`](docs/cache-first.md)
+- [`docs/development.md`](docs/development.md)
+- [`docs/deployment.md`](docs/deployment.md)
+- [`docs/phase-history.md`](docs/phase-history.md)
+- Admin operator notes: [`ADMIN_PANEL.md`](ADMIN_PANEL.md), [`QUICK_START_ADMIN.md`](QUICK_START_ADMIN.md)
+- Parser details: [`parser/README.md`](parser/README.md)
 
-## Architecture at a glance
+## Quickstart (summary)
 
-- **frontend/**
-  - `src/app` holds the public app routes.
-  - `src/app/admin/**` is the legacy admin panel surface.
-  - `src/lib/orpc/**`, `src/lib/query/**`, `src/lib/search/**` are admin-only infrastructure; keep public pages clear of these dependencies.
-- **backend/** provides API + auth; see `backend/docs/` for details.
-- **parser/** ingests anime data; see `parser/README.md`.
-- Admin-only docs live in [`ADMIN_PANEL.md`](./ADMIN_PANEL.md) and [`QUICK_START_ADMIN.md`](./QUICK_START_ADMIN.md).
+Backend:
+```bash
+cd backend
+cp .env.example .env   # set DATABASE_URL, SECRET_KEY, Redis settings
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt && pip install -r requirements-dev.txt
+alembic upgrade head
+uvicorn app.main:app --reload
+```
 
-## Running the stack locally (high level)
+Frontend:
+```bash
+cd frontend
+npm ci
+cp .env.example .env.local
+npm run dev   # http://localhost:3000
+```
 
-Prerequisites: Node.js 18+, Python 3.11+, Docker with Compose, PostgreSQL (Compose profile provided).
+Parser:
+```bash
+cd parser
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # set BACKEND_BASE_URL, INTERNAL_TOKEN, KODIK_API_TOKEN
+python -m parser.cli run --mode full
+```
 
-1. **Backend**
-   - `cd backend && cp .env.example .env` then set `SECRET_KEY` (generate with `openssl rand -hex 32`) and DB credentials.
-   - Start with Docker: `docker compose up -d --build` (or add `-f docker-compose.dev.yml` for dev).
-2. **Parser** (optional locally)
-   - `cd parser && python -m venv venv && source venv/bin/activate`
-   - `pip install -r requirements.txt && cp .env.example .env`
-   - Run when needed: `python -m parser.cli run --mode full`.
-3. **Frontend**
-   - `cd frontend && npm ci && cp .env.example .env.local`
-   - `npm run dev` (public app at http://localhost:3000).
-
-> **Security:** Keep backend/.env, parser/.env, and frontend/.env.local out of version control (these files are gitignored; do not override that). If secrets are committed, rotate them immediately and scrub history (e.g., with git filter-repo or BFG).
-
-## Boundaries and ownership
-
-- **Public frontend**: routes under `frontend/src/app` (excluding `/admin`).
-  - Avoid introducing dependencies on admin-only code.
-  - Prefer `frontend/src/lib/public-api.ts`/fetch over `frontend/src/lib/orpc/**`, `frontend/src/lib/query/**`, or `frontend/src/lib/search/**`.
-  - Legacy overlap exists and should be migrated away.
-- **Admin**: lives at `frontend/src/app/admin/**` and relies on the legacy infra above. Treat as isolated and stable; changes should stay inside these paths.
-- **Admin-only infrastructure** (legacy):
-  - `frontend/src/app/admin/**` – legacy admin surface.
-  - `frontend/src/lib/orpc/**` – admin RPC wiring.
-  - `frontend/src/lib/query/**` – admin query helpers.
-  - `frontend/src/lib/search/**` – admin search helpers.
-- Admin docs (`ADMIN_PANEL.md`, `QUICK_START_ADMIN.md`) are for admin operators only.
-- Backend and parser contracts are stable; avoid altering them as part of frontend work.
-
-## Not implemented yet
-
-- No media uploads/encoding pipeline (only external sources are used).
-- No push/notification system.
-- No mobile or desktop client bundles.
-- No multi-tenant or role-based admin beyond the existing legacy admin user flow.
-
-## CI / lint notes
-
-- Frontend linting may emit warnings/errors from legacy admin code; these are known and isolated to admin paths.
-- Prefer scoped linting when iterating on public pages; avoid refactoring admin logic while addressing lint noise.
-- CodeQL/other CI jobs may report legacy patterns; treat admin-related findings separately from public app work.
+## Boundaries
+- Public frontend must avoid admin-only stacks (`src/lib/orpc`, `src/lib/query`, `src/lib/search`).
+- Read endpoints (`/api/read/**`) use Redis only; missing keys return 404 and require operational rebuilds.
+- Write endpoints (`/api/v1/**`) persist to Postgres; keep schemas and semantics unchanged.
+- Redis is required in production for read endpoints and rate limiting; tolerated as optional in dev/test.
