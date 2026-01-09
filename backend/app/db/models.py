@@ -19,6 +19,15 @@ class LibraryStatus(str, enum.Enum):
     DROPPED = "dropped"
 
 
+def normalize_library_status(status: LibraryStatus | str | None) -> str | None:
+    """Return canonical lowercase status value for DB storage."""
+    if status is None:
+        return None
+    if isinstance(status, LibraryStatus):
+        return status.value
+    return str(status).lower()
+
+
 class User(Base):
     """User model for authentication."""
     

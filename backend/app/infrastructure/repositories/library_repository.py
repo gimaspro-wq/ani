@@ -5,17 +5,8 @@ from typing import List, Optional
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import UserLibraryItem, LibraryStatus
+from app.db.models import UserLibraryItem, LibraryStatus, normalize_library_status
 from app.domain.interfaces.repositories import ILibraryRepository
-
-
-def _status_value(status: Optional[LibraryStatus]) -> Optional[str]:
-    """Normalize status to database value (lowercase)."""
-    if status is None:
-        return None
-    if isinstance(status, LibraryStatus):
-        return status.value
-    return str(status).lower()
 
 
 class LibraryRepository(ILibraryRepository):
@@ -80,7 +71,7 @@ class LibraryRepository(ILibraryRepository):
         if item:
             # Update existing
             if status is not None:
-                item.status = _status_value(status)
+                item.status = normalize_library_status(status)
             if is_favorite is not None:
                 item.is_favorite = is_favorite
             item.updated_at = datetime.now(timezone.utc)
@@ -90,7 +81,7 @@ class LibraryRepository(ILibraryRepository):
                 user_id=user_id,
                 provider=provider,
                 title_id=title_id,
-                status=_status_value(status) or LibraryStatus.WATCHING.value,
+                status=normalize_library_status(status) or LibraryStatus.WATCHING.value,
                 is_favorite=is_favorite or False
             )
             self.db.add(item)
