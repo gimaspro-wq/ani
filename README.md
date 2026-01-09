@@ -23,29 +23,32 @@ This README is the single source of truth for repository structure and local wor
 
 Prerequisites: Node.js 18+, Python 3.11+, Docker with Compose, PostgreSQL (Compose profile provided).
 
-1) **Backend**
-   - `cd backend && cp .env.example .env` then set `SECRET_KEY` and DB credentials.
+1. **Backend**
+   - `cd backend && cp .env.example .env` then set `SECRET_KEY` (generate with `openssl rand -hex 32`) and DB credentials.
    - Start with Docker: `docker compose up -d --build` (or add `-f docker-compose.dev.yml` for dev).
-2) **Parser** (optional locally)
+2. **Parser** (optional locally)
    - `cd parser && python -m venv venv && source venv/bin/activate`
    - `pip install -r requirements.txt && cp .env.example .env`
    - Run when needed: `python -m parser.cli run --mode full`.
-3) **Frontend**
+3. **Frontend**
    - `cd frontend && npm ci && cp .env.example .env.local`
    - `npm run dev` (public app at http://localhost:3000).
 
-Keep backend/.env and parser/.env secrets out of version control.
+> **Security:** Keep backend/.env, parser/.env, and frontend/.env.local out of version control (these files are gitignored; do not override that). If secrets are committed, rotate them immediately and scrub history (e.g., with git filter-repo or BFG).
 
 ## Boundaries and ownership
 
-- **Public frontend**: routes under `frontend/src/app` (excluding `/admin`). Avoid introducing dependencies on admin-only code; new public work should use `frontend/src/lib/public-api.ts`/fetch instead of `frontend/src/lib/orpc/**`, `frontend/src/lib/query/**`, or `frontend/src/lib/search/**` (legacy overlap exists and should be migrated away).
+- **Public frontend**: routes under `frontend/src/app` (excluding `/admin`).
+  - Avoid introducing dependencies on admin-only code.
+  - Prefer `frontend/src/lib/public-api.ts`/fetch over `frontend/src/lib/orpc/**`, `frontend/src/lib/query/**`, or `frontend/src/lib/search/**`.
+  - Legacy overlap exists and should be migrated away.
 - **Admin**: lives at `frontend/src/app/admin/**` and relies on the legacy infra above. Treat as isolated and stable; changes should stay inside these paths.
 - **Admin-only infrastructure** (legacy):
   - `frontend/src/app/admin/**` – legacy admin surface.
   - `frontend/src/lib/orpc/**` – admin RPC wiring.
   - `frontend/src/lib/query/**` – admin query helpers.
   - `frontend/src/lib/search/**` – admin search helpers.
-- README.md is the entry point. Admin docs (`ADMIN_PANEL.md`, `QUICK_START_ADMIN.md`) are for admin operators only.
+- Admin docs (`ADMIN_PANEL.md`, `QUICK_START_ADMIN.md`) are for admin operators only.
 - Backend and parser contracts are stable; avoid altering them as part of frontend work.
 
 ## Not implemented yet

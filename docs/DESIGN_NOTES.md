@@ -2,11 +2,11 @@
 
 ## Admin isolation plan
 
-- Target structure: move the admin panel to its own package/app (e.g., `apps/admin`) so it can build, lint, and deploy independently from the public site.
-- Assets to relocate together: `frontend/src/app/admin/**`, `frontend/src/lib/orpc/**`, `frontend/src/lib/query/**`, `frontend/src/lib/search/**`, admin auth context/hooks, and any admin-only UI shells.
-- Dependencies to account for: oRPC client/server bindings, TanStack Query usage, admin auth/session handling, and shared UI components pulled from `frontend/src/components`.
-- Blockers to track: shared UI primitives (buttons, inputs), global Tailwind/Next.js config, environment variable handling, and router configuration for the `/admin` base path. These need duplication or a shared package before extraction.
-- After extraction: wire the admin app to the backend/parsers through a dedicated API client and keep the public app oblivious to admin code.
+1. **Target shape**: move the admin panel to its own package/app (e.g., `apps/admin`) so it can build, lint, and deploy independently from the public site.
+2. **Move together**: `frontend/src/app/admin/**`, `frontend/src/lib/orpc/**`, `frontend/src/lib/query/**`, `frontend/src/lib/search/**`, admin auth context/hooks, and any admin-only UI shells.
+3. **Account for dependencies**: oRPC client/server bindings, TanStack Query usage, admin auth/session handling, and shared UI components pulled from `frontend/src/components`.
+4. **Resolve blockers**: shared UI primitives (buttons, inputs), global Tailwind/Next.js config, environment variable handling, and router configuration for the `/admin` base path. These need duplication or a shared package before extraction.
+5. **After extraction**: wire the admin app to the backend/parsers through a dedicated API client and keep the public app oblivious to admin code.
 
 ## Public frontend simplification plan
 
@@ -17,7 +17,7 @@
 
 ## CI simplification notes
 
-- Current lint/CodeQL noise largely originates from the legacy admin panel (e.g., loose `any` types and shared infra bindings).
+- Current lint/CodeQL noise largely originates from the legacy admin panel (e.g., `@typescript-eslint/no-explicit-any` in `frontend/src/app/admin/anime/*`, unused vars in admin contexts/hooks, and shared infra bindings).
 - Recommended next steps:
   - Add scoped lint runs that exclude `frontend/src/app/admin/**` for public PRs, or apply separate ESLint configs per app.
   - Isolate CodeQL source roots to scan admin separately from public/frontend/backend code.
