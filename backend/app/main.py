@@ -22,6 +22,13 @@ from app.core.rate_limiting import limiter, RateLimitMiddleware
 from app.core.tracing import setup_tracing
 from app.infrastructure.adapters.redis_client import redis_client
 
+
+from app.core.auto_migrate import run_migrations
+from app.core.config import settings
+
+
+
+
 # Setup logging
 setup_logging(debug=settings.DEBUG)
 logger = logging.getLogger(__name__)
@@ -30,6 +37,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup and shutdown."""
+    if settings.AUTO_RUN_MIGRATIONS and settings.ENV != "production":
+    run_migrations()
+
     # Startup
     logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION} (env={settings.ENV})")
     
