@@ -125,7 +125,6 @@ export function VideoPlayer({ sources, title, onEnded }: VideoPlayerProps) {
               className="absolute inset-0 h-full w-full rounded-b-xl bg-black"
               controls
               playsInline
-              onLoadedData={() => setIsLoading(false)}
               onCanPlay={() => setIsLoading(false)}
               onError={() => {
                 setIsLoading(false);

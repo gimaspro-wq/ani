@@ -24,11 +24,21 @@ export function EpisodePlayerWrapper({
   const router = useRouter();
 
   const { prev, next } = useMemo(() => {
-    const prevEpisode = episodes
-      .slice()
-      .reverse()
-      .find((ep) => ep.number < currentNumber);
-    const nextEpisode = episodes.find((ep) => ep.number > currentNumber);
+    let prevEpisode: Episode | undefined;
+    let nextEpisode: Episode | undefined;
+
+    for (const ep of episodes) {
+      if (ep.number < currentNumber) {
+        if (!prevEpisode || ep.number > prevEpisode.number) {
+          prevEpisode = ep;
+        }
+      } else if (ep.number > currentNumber) {
+        if (!nextEpisode || ep.number < nextEpisode.number) {
+          nextEpisode = ep;
+        }
+      }
+    }
+
     return { prev: prevEpisode, next: nextEpisode };
   }, [episodes, currentNumber]);
 

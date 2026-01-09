@@ -100,7 +100,7 @@ export function CatalogExplorer({ anime }: CatalogExplorerProps) {
         <AnimeGrid anime={filtered} />
       ) : (
         <div className="rounded-lg border border-border bg-foreground/[0.02] p-8 text-center text-muted-foreground">
-          Nothing found
+          Ничего не найдено
         </div>
       )}
     </div>
