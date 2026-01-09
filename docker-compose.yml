@@ -44,6 +44,11 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - ENV=production
+      - DEBUG=false
+      - COOKIE_SECURE=true
+      - RATE_LIMIT_ENABLED=true
+      - ALLOWED_ORIGINS=https://frontend.example.com
       - DATABASE_URL=postgresql+asyncpg://ani_user:ani_password@postgres:5432/ani_db
       - REDIS_URL=redis://redis:6379/0
     depends_on:

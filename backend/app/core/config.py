@@ -29,6 +29,8 @@ class Settings(_BaseSettings):
     
     # Database
     DATABASE_URL: str
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
 
     # Security - NO DEFAULTS for secrets
     SECRET_KEY: str
@@ -90,7 +92,7 @@ class Settings(_BaseSettings):
             raise ValueError("SECRET_KEY must be set and cannot be empty")
         
         # Get env from info.data (works with both v1 and v2 validation)
-        env = info.data.get("ENV", "dev")
+        env = cls._get_env(info)
         
         # In production, ensure secret key is strong enough
         if env == "production":
@@ -124,7 +126,7 @@ class Settings(_BaseSettings):
         if not v:
             raise ValueError("INTERNAL_TOKEN must be set and cannot be empty")
         
-        env = info.data.get("ENV", "dev")
+        env = cls._get_env(info)
         if env == "production" and len(v) < 32:
             raise ValueError(
                 "INTERNAL_TOKEN must be at least 32 characters in production. "
@@ -132,6 +134,61 @@ class Settings(_BaseSettings):
             )
         
         return v
+    
+    @field_validator("DEBUG")
+    @classmethod
+    def validate_debug(cls, v: bool, info) -> bool:
+        """Ensure DEBUG is not enabled in production."""
+        env = cls._get_env(info)
+        if env == "production" and v:
+            raise ValueError("DEBUG must be false in production")
+        return v
+    
+    @field_validator("COOKIE_SECURE")
+    @classmethod
+    def validate_cookie_secure(cls, v: bool, info) -> bool:
+        """Require secure cookies in production."""
+        env = cls._get_env(info)
+        if env == "production" and not v:
+            raise ValueError("COOKIE_SECURE must be true in production")
+        return v
+    
+    @field_validator("RATE_LIMIT_ENABLED")
+    @classmethod
+    def validate_rate_limit_enabled(cls, v: bool, info) -> bool:
+        """Prevent disabling rate limiting in production."""
+        env = cls._get_env(info)
+        if env == "production" and not v:
+            raise ValueError("RATE_LIMIT_ENABLED cannot be disabled in production")
+        return v
+    
+    @field_validator("ALLOWED_ORIGINS")
+    @classmethod
+    def validate_allowed_origins(cls, v: str, info) -> str:
+        """Disallow wildcard CORS in production."""
+        env = cls._get_env(info)
+        if env == "production":
+            origins = [origin.strip() for origin in v.split(",") if origin.strip()]
+            if "*" in origins:
+                raise ValueError("ALLOWED_ORIGINS cannot be '*' in production")
+        return v
+    
+    @classmethod
+    def _get_env(cls, info) -> str:
+        """
+        Safely derive ENV value for validators.
+        
+        Validators run independently, so this helper normalizes ENV access with a
+        resilient fallback order (incoming data -> field default -> dev).
+        """
+        env_value = info.data.get("ENV")
+        if env_value:
+            return env_value
+        env_field = cls.model_fields.get("ENV")
+        default_env = env_field.default if env_field and hasattr(env_field, "default") else None
+        if default_env:
+            return default_env
+        return "dev"
     
     @property
     def allowed_origins_list(self) -> list[str]:

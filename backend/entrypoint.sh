@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -e
+
+GUNICORN_WORKERS=${GUNICORN_WORKERS:-4}
+GUNICORN_WORKER_CONNECTIONS=${GUNICORN_WORKER_CONNECTIONS:-1000}
+GUNICORN_MAX_REQUESTS=${GUNICORN_MAX_REQUESTS:-1000}
+GUNICORN_MAX_REQUESTS_JITTER=${GUNICORN_MAX_REQUESTS_JITTER:-100}
+
+exec gunicorn app.main:app -k uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:8000 \
+  --workers "$GUNICORN_WORKERS" \
+  --worker-connections "$GUNICORN_WORKER_CONNECTIONS" \
+  --max-requests "$GUNICORN_MAX_REQUESTS" \
+  --max-requests-jitter "$GUNICORN_MAX_REQUESTS_JITTER"

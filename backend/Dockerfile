@@ -32,6 +32,7 @@ COPY --from=builder /root/.local /home/appuser/.local
 
 # Copy application code
 COPY --chown=appuser:appuser . .
+RUN chmod +x /app/entrypoint.sh
 
 # Set PATH to include user's local bin
 ENV PATH=/home/appuser/.local/bin:$PATH
@@ -46,5 +47,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()" || exit 1
 
-# Run application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run application with Gunicorn + Uvicorn workers for production
+CMD ["./entrypoint.sh"]
