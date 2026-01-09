@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type Hls from "hls.js";
 import type { VideoSource } from "@/lib/types";
 import { SourceSwitcher } from "./SourceSwitcher";
 import { Spinner } from "@/components/ui/spinner";
@@ -37,7 +38,7 @@ export function VideoPlayer({ sources, title, onEnded }: VideoPlayerProps) {
       const video = videoRef.current;
       if (!video) return;
 
-      let hlsInstance: { destroy: () => void } | null = null;
+      let hlsInstance: Hls | null = null;
 
       const setupHls = async () => {
         if (selectedSource.type === "mp4") {

@@ -5,6 +5,7 @@ import { Navbar } from "@/components/blocks/navbar";
 import { EpisodeList } from "@/components/EpisodeList";
 import { EpisodePlayerWrapper } from "@/components/EpisodePlayerWrapper";
 import { getAnimeBySlug, getEpisodesBySlug } from "@/lib/public-api";
+import type { Episode } from "@/lib/types";
 
 export const revalidate = 60;
 
@@ -91,8 +92,8 @@ function EpisodeView({
 }: {
   animeTitle: string;
   slug: string;
-  episode: (typeof episodes)[number];
-  episodes: typeof episodes;
+  episode: Episode;
+  episodes: Episode[];
 }) {
   return (
     <main className="mx-auto max-w-6xl px-4 pb-12 pt-20 space-y-8">
