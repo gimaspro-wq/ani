@@ -1,6 +1,4 @@
 "use client";
-
-import type { Metadata } from "next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Hls, { Level } from "hls.js";
 import { useSearchParams } from "next/navigation";
@@ -22,12 +20,6 @@ type EpisodeItem = {
 const SAMPLE_EPISODE = {
   title: "Sample Episode 1",
   streamUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-};
-
-export const metadata: Metadata = {
-  title: "HLS плеер",
-  description: "Воспроизведение серий с существующих READ эндпоинтов в формате HLS.",
-  alternates: { canonical: "/player" },
 };
 
 export default function PlayerPage() {

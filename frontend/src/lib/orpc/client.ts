@@ -3,13 +3,14 @@ import type { InferClientOutputs } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import { DedupeRequestsPlugin } from "@orpc/client/plugins";
 import type { RouterClient } from "@orpc/server";
+import { getServerBaseUrl } from "@/lib/server-base-url";
 import type { AppRouter } from "./router";
 
 function getBaseUrl() {
   if (typeof window !== "undefined") {
-    return window.location.origin;
+    return window.location.origin || "";
   }
-  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return getServerBaseUrl();
 }
 
 const link = new RPCLink({

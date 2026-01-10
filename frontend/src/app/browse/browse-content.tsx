@@ -34,8 +34,8 @@ export function BrowseContent() {
   );
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
-    useInfiniteQuery(
-      orpc.anime.getCategoryAnime.infiniteOptions({
+    useInfiniteQuery({
+      ...orpc.anime.getCategoryAnime.infiniteOptions({
         input: (pageParam: number) => ({
           category: category as CategoryId,
           page: pageParam,
@@ -44,7 +44,8 @@ export function BrowseContent() {
           lastPage.hasNextPage ? lastPage.currentPage + 1 : undefined,
         initialPageParam: 1,
       }),
-    );
+      enabled: typeof window !== "undefined",
+    });
 
   const animes =
     data?.pages.flatMap((page) =>

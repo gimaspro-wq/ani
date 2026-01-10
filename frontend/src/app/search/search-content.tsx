@@ -69,7 +69,10 @@ export function SearchContent() {
         },
       },
     }),
-    enabled: !isReady && debouncedQuery.length >= 2,
+    enabled:
+      typeof window !== "undefined" &&
+      !isReady &&
+      debouncedQuery.length >= 2,
   });
 
   // Filter index results by client-side filters

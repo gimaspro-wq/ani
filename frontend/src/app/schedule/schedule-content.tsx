@@ -71,11 +71,12 @@ export function ScheduleContent() {
     parseAsString.withDefault(todayStr)
   );
 
-  const { data, isLoading } = useQuery(
-    orpc.anime.getEstimatedSchedule.queryOptions({
+  const { data, isLoading } = useQuery({
+    ...orpc.anime.getEstimatedSchedule.queryOptions({
       input: { date },
-    })
-  );
+    }),
+    enabled: typeof window !== "undefined",
+  });
 
   const scheduledAnimes = data?.scheduledAnimes ?? [];
   const selectedDateObj = weekDates.find((d) => d.dateStr === date);
