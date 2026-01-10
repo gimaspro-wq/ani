@@ -13,7 +13,7 @@ function buildUrl(path: string): string {
   }
 
   if (!API_BASE) {
-    throw new Error("NEXT_PUBLIC_BACKEND_URL is not configured for server-side fetch");
+    return "";
   }
 
   return `${API_BASE}${path}`;
@@ -21,6 +21,11 @@ function buildUrl(path: string): string {
 
 async function fetchJson<T>(path: string): Promise<T | null> {
   const url = buildUrl(path);
+
+  // Server-side: fail silently if no URL (backend unavailable)
+  if (typeof window === "undefined" && !url) {
+    return null;
+  }
 
   try {
     const response = await fetch(url, {
@@ -32,12 +37,20 @@ async function fetchJson<T>(path: string): Promise<T | null> {
     }
 
     if (!response.ok) {
+      // Server-side: fail silently
+      if (typeof window === "undefined") {
+        return null;
+      }
       console.error(`Public API error for ${path}: ${response.status}`);
       return null;
     }
 
     return (await response.json()) as T;
   } catch (error) {
+    // Server-side: fail silently
+    if (typeof window === "undefined") {
+      return null;
+    }
     console.error(`Failed to fetch ${path}`, error);
     return null;
   }
