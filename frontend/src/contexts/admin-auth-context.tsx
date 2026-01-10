@@ -2,7 +2,17 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminAPI, type AdminUser } from '@/lib/admin-api';
+import { adminAPI } from '@/lib/admin-api';
+import type { AdminUser } from '@/types/admin';
+
+function isAdminUser(value: unknown): value is AdminUser {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'email' in value
+  );
+}
 
 interface AdminAuthContextType {
   admin: AdminUser | null;
@@ -26,13 +36,17 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       const token = adminAPI.getToken();
       if (token) {
         try {
-          const currentAdmin = await adminAPI.getCurrentAdmin();
-          setAdmin(currentAdmin);
-          setAuthError(null);
-        } catch (error: any) {
+          const currentAdmin: unknown = await adminAPI.getCurrentAdmin();
+          if (isAdminUser(currentAdmin)) {
+            setAdmin(currentAdmin);
+            setAuthError(null);
+          } else {
+            setAdmin(null);
+          }
+        } catch (error: unknown) {
           // Token is invalid, clear it
           adminAPI.setToken(null);
-          if (error?.status === 403) {
+          if (typeof error === 'object' && error !== null && 'status' in error && (error as { status?: number }).status === 403) {
             setAuthError('Access denied');
           }
         }
@@ -45,10 +59,14 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     await adminAPI.login({ email, password });
-    const currentAdmin = await adminAPI.getCurrentAdmin();
-    setAdmin(currentAdmin);
-    setAuthError(null);
-    router.push('/admin/dashboard');
+    const currentAdmin: unknown = await adminAPI.getCurrentAdmin();
+    if (isAdminUser(currentAdmin)) {
+      setAdmin(currentAdmin);
+      setAuthError(null);
+      router.push('/admin/dashboard');
+    } else {
+      setAdmin(null);
+    }
   };
 
   const logout = () => {
