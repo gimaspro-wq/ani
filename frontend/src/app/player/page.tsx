@@ -33,6 +33,7 @@ export default function PlayerPage() {
   const [episodes, setEpisodes] = useState<EpisodeItem[]>([]);
   const [selectedEpisode, setSelectedEpisode] = useState<EpisodeItem | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   const destroyHls = () => {
     hlsRef.current?.destroy();
@@ -102,6 +103,7 @@ export default function PlayerPage() {
   }, [slug]);
 
   const selectEpisode = (episode: EpisodeItem) => {
+    setIsSwitching(true);
     setSelectedEpisode(episode);
     setLevels([]);
     setCurrentLevel(-1);
@@ -115,11 +117,13 @@ export default function PlayerPage() {
     if (!source) {
       setStatusMessage("No active video sources for this episode.");
       destroyHls();
+      setIsSwitching(false);
       return;
     }
 
     setStatusMessage(null);
     loadStream(source.url);
+    setIsSwitching(false);
   };
 
   const handleQualityChange = (levelIndex: number) => {
@@ -127,6 +131,34 @@ export default function PlayerPage() {
       hlsRef.current.currentLevel = levelIndex;
     }
   };
+
+  const handleSkipOpening = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.currentTime = Math.max(0, video.currentTime + 90);
+    }
+  };
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleEnded = () => {
+      if (isSwitching) return;
+      const currentIndex = episodes.findIndex((ep) => ep.id === selectedEpisode?.id);
+      if (currentIndex === -1) return;
+      const next = episodes[currentIndex + 1];
+      if (next) {
+        selectEpisode(next);
+      }
+    };
+
+    video.addEventListener("ended", handleEnded);
+
+    return () => {
+      video.removeEventListener("ended", handleEnded);
+    };
+  }, [episodes, selectedEpisode, isSwitching]);
 
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center gap-4 py-8 px-4">
@@ -152,12 +184,12 @@ export default function PlayerPage() {
         {statusMessage && (
           <div className="text-sm text-amber-300 bg-amber-900/30 border border-amber-700 rounded px-3 py-2">
             {statusMessage}
-          </div>
-        )}
+            </div>
+          )}
 
-        {levels.length > 0 && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-300">Quality</span>
+          {levels.length > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-300">Quality</span>
             <select
               value={currentLevel}
               onChange={(e) => handleQualityChange(Number(e.target.value))}
@@ -170,14 +202,24 @@ export default function PlayerPage() {
                 </option>
               ))}
             </select>
-          </div>
-        )}
+            </div>
+          )}
 
-        {episodes.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-gray-300">Episodes</p>
-            <div className="flex flex-wrap gap-2">
-              {episodes.map((episode) => {
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSkipOpening}
+              className="px-3 py-2 bg-neutral-800 border border-neutral-700 rounded text-sm hover:border-blue-400"
+            >
+              Skip opening (+90s)
+            </button>
+          </div>
+
+          {episodes.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-gray-300">Episodes</p>
+              <div className="flex flex-wrap gap-2">
+                {episodes.map((episode) => {
                 const hasSources = episode.video_sources.some((vs) => vs.is_active !== false);
                 return (
                   <button
