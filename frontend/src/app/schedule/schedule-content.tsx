@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { parseAsString, useQueryState } from "nuqs";
 import { Spinner } from "@/components/ui/spinner";
 import { orpc } from "@/lib/query/orpc";
+import { useAuth } from "@/lib/auth/auth-context";
 import {
   Item,
   ItemContent,
@@ -70,13 +71,16 @@ export function ScheduleContent() {
     "date",
     parseAsString.withDefault(todayStr)
   );
+  const { isAuthenticated } = useAuth();
+  const queryEnabled = isAuthenticated && typeof window !== "undefined";
 
   const { data, isLoading } = useQuery({
     ...orpc.anime.getEstimatedSchedule.queryOptions({
       input: { date },
     }),
-    enabled: typeof window !== "undefined",
+    enabled: queryEnabled,
   });
+  const showLoading = queryEnabled && isLoading;
 
   const scheduledAnimes = data?.scheduledAnimes ?? [];
   const selectedDateObj = weekDates.find((d) => d.dateStr === date);
@@ -119,7 +123,7 @@ export function ScheduleContent() {
             </span>
           </div>
 
-          {isLoading ? (
+          {showLoading ? (
             <div className="flex items-center justify-center py-20">
               <Spinner className="size-8 text-muted-foreground" />
             </div>

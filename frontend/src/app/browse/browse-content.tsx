@@ -6,6 +6,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { Spinner } from "@/components/ui/spinner";
 import { orpc } from "@/lib/query/orpc";
+import { useAuth } from "@/lib/auth/auth-context";
 
 const categories = [
   { id: "most-popular", label: "Popular" },
@@ -32,6 +33,8 @@ export function BrowseContent() {
     "category",
     parseAsStringLiteral(categoryIds).withDefault("most-popular"),
   );
+  const { isAuthenticated } = useAuth();
+  const queryEnabled = isAuthenticated && typeof window !== "undefined";
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
     useInfiniteQuery({
@@ -44,8 +47,9 @@ export function BrowseContent() {
           lastPage.hasNextPage ? lastPage.currentPage + 1 : undefined,
         initialPageParam: 1,
       }),
-      enabled: typeof window !== "undefined",
+      enabled: queryEnabled,
     });
+  const showLoading = queryEnabled && isLoading;
 
   const animes =
     data?.pages.flatMap((page) =>
@@ -95,7 +99,7 @@ export function BrowseContent() {
             </h2>
           </div>
 
-          {isLoading ? (
+          {showLoading ? (
             <div className="flex items-center justify-center py-20">
               <Spinner className="size-8 text-muted-foreground" />
             </div>

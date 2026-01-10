@@ -4,11 +4,14 @@ import { useEffect, useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getSearchIndex, type AnimeIndexItem } from "@/lib/search/index";
 import { orpc } from "@/lib/query/orpc";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export function useSearchIndex() {
   const [isIndexReady, setIsIndexReady] = useState(false);
   const [isBuilding, setIsBuilding] = useState(false);
   const searchIndex = getSearchIndex();
+  const { isAuthenticated } = useAuth();
+  const queryEnabled = isAuthenticated;
 
   // Fetch popular anime to build index
   const { data: popularData } = useQuery({
@@ -16,6 +19,7 @@ export function useSearchIndex() {
       input: { category: "most-popular", page: 1 },
     }),
     staleTime: 15 * 60 * 1000, // 15 minutes
+    enabled: queryEnabled,
   });
 
   const { data: recentData } = useQuery({
@@ -23,6 +27,7 @@ export function useSearchIndex() {
       input: { category: "recently-updated", page: 1 },
     }),
     staleTime: 15 * 60 * 1000,
+    enabled: queryEnabled,
   });
 
   const { data: airingData } = useQuery({
@@ -30,6 +35,7 @@ export function useSearchIndex() {
       input: { category: "top-airing", page: 1 },
     }),
     staleTime: 15 * 60 * 1000,
+    enabled: queryEnabled,
   });
 
   // Load or build index
@@ -37,6 +43,12 @@ export function useSearchIndex() {
     let mounted = true;
 
     async function initializeIndex() {
+      if (!queryEnabled) {
+        setIsIndexReady(false);
+        setIsBuilding(false);
+        return;
+      }
+
       try {
         // Try to load existing index
         const loaded = await searchIndex.load();
@@ -103,7 +115,7 @@ export function useSearchIndex() {
     return () => {
       mounted = false;
     };
-  }, [popularData, recentData, airingData, searchIndex]);
+  }, [popularData, recentData, airingData, searchIndex, queryEnabled]);
 
   const search = useCallback(
     (query: string, limit?: number) => {
