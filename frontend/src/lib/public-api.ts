@@ -21,6 +21,7 @@ function buildUrl(path: string): string {
 
 async function fetchJson<T>(path: string): Promise<T | null> {
   const url = buildUrl(path);
+  const isServer = typeof window === "undefined";
 
   try {
     const response = await fetch(url, {
@@ -32,13 +33,23 @@ async function fetchJson<T>(path: string): Promise<T | null> {
     }
 
     if (!response.ok) {
-      console.error(`Public API error for ${path}: ${response.status}`);
+      if (!isServer) {
+        console.error(`Public API error for ${path}: ${response.status}`);
+      }
+      if (isServer) {
+        throw new Error(`Public API error for ${path}: ${response.status}`);
+      }
       return null;
     }
 
     return (await response.json()) as T;
   } catch (error) {
-    console.error(`Failed to fetch ${path}`, error);
+    if (!isServer) {
+      console.error(`Failed to fetch ${path}`, error);
+    }
+    if (isServer) {
+      throw new Error(`Failed to fetch ${path}`);
+    }
     return null;
   }
 }
