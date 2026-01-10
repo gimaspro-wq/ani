@@ -1,5 +1,6 @@
 "use client";
 
+import type { Metadata } from "next";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Hls, { Level } from "hls.js";
 import { useSearchParams } from "next/navigation";
@@ -21,6 +22,12 @@ type EpisodeItem = {
 const SAMPLE_EPISODE = {
   title: "Sample Episode 1",
   streamUrl: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+};
+
+export const metadata: Metadata = {
+  title: "HLS плеер",
+  description: "Воспроизведение серий с существующих READ эндпоинтов в формате HLS.",
+  alternates: { canonical: "/player" },
 };
 
 export default function PlayerPage() {
@@ -182,10 +189,14 @@ export default function PlayerPage() {
         </div>
 
         {statusMessage && (
-          <div className="text-sm text-amber-300 bg-amber-900/30 border border-amber-700 rounded px-3 py-2">
+          <div
+            className="text-sm text-amber-300 bg-amber-900/30 border border-amber-700 rounded px-3 py-2"
+            role="status"
+            aria-live="polite"
+          >
             {statusMessage}
-            </div>
-          )}
+          </div>
+        )}
 
           {levels.length > 0 && (
             <div className="flex items-center gap-3">

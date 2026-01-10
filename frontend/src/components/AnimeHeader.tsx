@@ -73,3 +73,38 @@ export function AnimeHeader({ anime, className }: AnimeHeaderProps) {
     </section>
   );
 }
+
+export function AnimeHeaderSkeleton({ className }: { className?: string }) {
+  return (
+    <section
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-border bg-foreground/[0.02]",
+        className,
+      )}
+    >
+      <div className="grid gap-6 p-6 md:grid-cols-[220px_1fr] lg:grid-cols-[260px_1fr]">
+        <div className="relative h-full min-h-[280px] overflow-hidden rounded-xl bg-foreground/10 animate-pulse" />
+        <div className="flex flex-col gap-4">
+          <div className="space-y-3">
+            <div className="h-3 w-32 rounded bg-foreground/10 animate-pulse" />
+            <div className="h-8 w-3/4 rounded bg-foreground/10 animate-pulse" />
+            <div className="h-4 w-1/2 rounded bg-foreground/10 animate-pulse" />
+          </div>
+          <div className="space-y-2">
+            <div className="h-4 w-full rounded bg-foreground/10 animate-pulse" />
+            <div className="h-4 w-5/6 rounded bg-foreground/10 animate-pulse" />
+            <div className="h-4 w-2/3 rounded bg-foreground/10 animate-pulse" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 5 }).map((_, idx) => (
+              <span
+                key={idx}
+                className="h-6 w-16 rounded-full bg-foreground/10 animate-pulse"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
