@@ -8,6 +8,7 @@ import { Clock } from "lucide-react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useSearchIndex } from "@/hooks/use-search-index";
 import { orpc } from "@/lib/query/orpc";
+import { useAuth } from "@/lib/auth/auth-context";
 import {
   CommandDialog,
   CommandEmpty,
@@ -50,6 +51,8 @@ export function CommandMenu() {
   const router = useRouter();
 
   const { search, isReady, isBuilding } = useSearchIndex();
+  const { isAuthenticated } = useAuth();
+  const queryEnabled = isAuthenticated;
 
   // Use index search if ready, otherwise fall back to API
   const indexResults =
@@ -65,7 +68,7 @@ export function CommandMenu() {
     ...orpc.anime.search.queryOptions({
       input: { query: debouncedQuery, page: 1 },
     }),
-    enabled: !isReady && debouncedQuery.length >= 2,
+    enabled: queryEnabled && !isReady && debouncedQuery.length >= 2,
   });
 
   const apiResults = (apiSearchData?.animes ?? []).filter(
@@ -76,7 +79,7 @@ export function CommandMenu() {
   );
 
   const searchResults = indexResults || apiResults;
-  const isSearching = (!isReady && isApiLoading) || isBuilding;
+  const isSearching = (queryEnabled && !isReady && isApiLoading) || isBuilding;
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

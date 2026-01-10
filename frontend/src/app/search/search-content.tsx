@@ -12,6 +12,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useSearchIndex } from "@/hooks/use-search-index";
 import { orpc } from "@/lib/query/orpc";
+import { useAuth } from "@/lib/auth/auth-context";
 
 const GENRES = [
   "Action",
@@ -49,6 +50,8 @@ export function SearchContent() {
 
   const debouncedQuery = useDebounce(query, 200);
   const { search, isReady, isBuilding } = useSearchIndex();
+  const { isAuthenticated } = useAuth();
+  const queryEnabled = isAuthenticated && typeof window !== "undefined";
 
   // Use index search if ready, otherwise fall back to API
   const indexResults =
@@ -70,7 +73,7 @@ export function SearchContent() {
       },
     }),
     enabled:
-      typeof window !== "undefined" &&
+      queryEnabled &&
       !isReady &&
       debouncedQuery.length >= 2,
   });
@@ -100,7 +103,7 @@ export function SearchContent() {
   );
 
   const displayResults = indexResults ? filteredResults : apiResults;
-  const isSearching = isApiLoading || isBuilding;
+  const isSearching = (queryEnabled && isApiLoading) || isBuilding;
 
   const toggleGenre = (genre: string) => {
     if (genres.includes(genre)) {
