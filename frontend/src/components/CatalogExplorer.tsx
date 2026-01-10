@@ -79,6 +79,7 @@ export function CatalogExplorer({ anime }: CatalogExplorerProps) {
           <option value="">Все статусы</option>
           <option value="ongoing">Ongoing</option>
           <option value="completed">Completed</option>
+          <option value="upcoming">Upcoming</option>
         </select>
 
         <select

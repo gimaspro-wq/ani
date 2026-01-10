@@ -1,6 +1,7 @@
 import type { AnimeDetail, AnimeListItem, Episode } from "@/lib/types";
 
-const API_BASE = "/api/v1/anime";
+const READ_API_BASE = "/api/read/anime";
+const LEGACY_EPISODES_BASE = "/api/v1/anime";
 
 async function fetchJson<T>(path: string): Promise<T | null> {
   try {
@@ -25,17 +26,19 @@ async function fetchJson<T>(path: string): Promise<T | null> {
 }
 
 export async function getAnimeList(): Promise<AnimeListItem[]> {
-  const data = await fetchJson<AnimeListItem[]>(`${API_BASE}`);
+  const data = await fetchJson<AnimeListItem[]>(`${READ_API_BASE}`);
   return Array.isArray(data) ? data : [];
 }
 
 export async function getAnimeBySlug(slug: string): Promise<AnimeDetail | null> {
   if (!slug) return null;
-  return fetchJson<AnimeDetail>(`${API_BASE}/${encodeURIComponent(slug)}`);
+  return fetchJson<AnimeDetail>(`${READ_API_BASE}/${encodeURIComponent(slug)}`);
 }
 
 export async function getEpisodesBySlug(slug: string): Promise<Episode[]> {
   if (!slug) return [];
-  const data = await fetchJson<Episode[]>(`${API_BASE}/${encodeURIComponent(slug)}/episodes`);
+  const data = await fetchJson<Episode[]>(
+    `${LEGACY_EPISODES_BASE}/${encodeURIComponent(slug)}/episodes`,
+  );
   return Array.isArray(data) ? data : [];
 }

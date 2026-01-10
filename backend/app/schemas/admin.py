@@ -142,6 +142,16 @@ class EpisodeUpdateRequest(BaseModel):
     is_active: Optional[bool] = None
 
 
+class EpisodeAttachRequest(BaseModel):
+    """Attach an existing episode to an anime."""
+    anime_id: UUID
+
+
+class EpisodeDetachRequest(BaseModel):
+    """Detach an episode logically (disable)."""
+    reason: Optional[str] = None
+
+
 # Video Source Management Schemas
 class VideoSourceListItem(BaseModel):
     """Video source list item schema."""
@@ -184,6 +194,12 @@ class VideoSourceUpdateRequest(BaseModel):
     source_name: Optional[str] = None
     priority: Optional[int] = None
     is_active: Optional[bool] = None
+
+
+class VideoSourceStateRequest(BaseModel):
+    """Update video source activation/priority without altering metadata."""
+    is_active: bool
+    priority: Optional[int] = None
 
 
 # Audit Log Schemas

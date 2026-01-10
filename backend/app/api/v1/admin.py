@@ -24,10 +24,13 @@ from app.schemas.admin import (
     EpisodeListItem,
     EpisodeCreateRequest,
     EpisodeUpdateRequest,
+    EpisodeAttachRequest,
+    EpisodeDetachRequest,
     VideoSourceListResponse,
     VideoSourceListItem,
     VideoSourceCreateRequest,
     VideoSourceUpdateRequest,
+    VideoSourceStateRequest,
 )
 from app.services.admin import authenticate_admin, log_admin_action, get_dashboard_stats
 
@@ -335,6 +338,91 @@ async def update_episode(
     return EpisodeListItem.model_validate(episode)
 
 
+@router.post("/episodes/{episode_id}/attach", response_model=EpisodeListItem)
+async def attach_episode(
+    episode_id: UUID,
+    attach_data: EpisodeAttachRequest,
+    admin: Annotated[AdminUser, Depends(get_current_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Attach an existing episode to a different anime."""
+    episode_result = await db.execute(
+        select(Episode).filter(Episode.id == episode_id)
+    )
+    episode = episode_result.scalar_one_or_none()
+    if not episode:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Episode not found")
+
+    anime_result = await db.execute(
+        select(Anime).filter(Anime.id == attach_data.anime_id)
+    )
+    anime = anime_result.scalar_one_or_none()
+    if not anime:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Anime not found")
+
+    changes = {}
+    if episode.anime_id != attach_data.anime_id:
+        changes["anime_id"] = {"old": str(episode.anime_id), "new": str(attach_data.anime_id)}
+        episode.anime_id = attach_data.anime_id
+        episode.admin_modified = True
+
+        await db.commit()
+        await db.refresh(episode)
+
+        await log_admin_action(
+            db=db,
+            admin_id=admin.id,
+            action="attach",
+            resource_type="episode",
+            resource_id=str(episode_id),
+            changes=changes,
+        )
+        logger.info(f"Admin {admin.email} attached episode {episode_id} to anime {attach_data.anime_id}")
+
+    return EpisodeListItem.model_validate(episode)
+
+
+@router.post("/episodes/{episode_id}/detach", response_model=EpisodeListItem)
+async def detach_episode(
+    episode_id: UUID,
+    detach_data: EpisodeDetachRequest,
+    admin: Annotated[AdminUser, Depends(get_current_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Logically detach an episode by disabling it.
+    The FK remains intact to avoid schema changes; visibility controlled via is_active.
+    """
+    episode_result = await db.execute(
+        select(Episode).filter(Episode.id == episode_id)
+    )
+    episode = episode_result.scalar_one_or_none()
+    if not episode:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Episode not found")
+
+    changes = {}
+    if episode.is_active:
+        changes["is_active"] = {"old": str(episode.is_active), "new": "False"}
+        episode.is_active = False
+        episode.admin_modified = True
+
+        await db.commit()
+        await db.refresh(episode)
+
+        reason_changes = {"reason": detach_data.reason} if detach_data.reason else {}
+        await log_admin_action(
+            db=db,
+            admin_id=admin.id,
+            action="detach",
+            resource_type="episode",
+            resource_id=str(episode_id),
+            changes={**changes, **reason_changes},
+        )
+        logger.info(f"Admin {admin.email} detached episode {episode_id}")
+
+    return EpisodeListItem.model_validate(episode)
+
+
 # Video Source Management Endpoints
 @router.get("/episodes/{episode_id}/video", response_model=VideoSourceListResponse)
 async def list_video_sources(
@@ -467,6 +555,44 @@ async def update_video_source(
         
         logger.info(f"Admin {admin.email} updated video source {video_id}: {changes}")
     
+    return VideoSourceListItem.model_validate(video_source)
+
+
+@router.post("/video/{video_id}/state", response_model=VideoSourceListItem)
+async def update_video_state(
+    video_id: UUID,
+    state_data: VideoSourceStateRequest,
+    admin: Annotated[AdminUser, Depends(get_current_admin)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Enable/disable a video source and optionally adjust priority."""
+    result = await db.execute(select(VideoSource).filter(VideoSource.id == video_id))
+    video_source = result.scalar_one_or_none()
+    if not video_source:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video source not found")
+
+    changes = {}
+    if video_source.is_active != state_data.is_active:
+        changes["is_active"] = {"old": str(video_source.is_active), "new": str(state_data.is_active)}
+        video_source.is_active = state_data.is_active
+    if state_data.priority is not None and video_source.priority != state_data.priority:
+        changes["priority"] = {"old": str(video_source.priority), "new": str(state_data.priority)}
+        video_source.priority = state_data.priority
+
+    if changes:
+        video_source.admin_modified = True
+        await db.commit()
+        await db.refresh(video_source)
+        await log_admin_action(
+            db=db,
+            admin_id=admin.id,
+            action="update",
+            resource_type="video_source_state",
+            resource_id=str(video_id),
+            changes=changes,
+        )
+        logger.info(f"Admin {admin.email} updated video source state {video_id}: {changes}")
+
     return VideoSourceListItem.model_validate(video_source)
 
 
