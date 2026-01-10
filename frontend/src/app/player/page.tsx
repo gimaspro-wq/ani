@@ -1,7 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
+import { useSearchParams } from "next/navigation";
+
+type EpisodeSource = {
+  id: string;
+  url: string;
+  priority: number;
+  is_active?: boolean;
+};
+
+type EpisodeItem = {
+  id: string;
+  number: number;
+  title: string | null;
+  video_sources: EpisodeSource[];
+};
 
 const SAMPLE_EPISODE = {
   title: "Sample Episode 1",
@@ -13,10 +28,22 @@ export default function PlayerPage() {
   const hlsRef = useRef<Hls | null>(null);
   const [levels, setLevels] = useState<Hls.Level[]>([]);
   const [currentLevel, setCurrentLevel] = useState<number>(-1);
+  const searchParams = useSearchParams();
+  const slug = useMemo(() => searchParams.get("slug")?.trim(), [searchParams]);
+  const [episodes, setEpisodes] = useState<EpisodeItem[]>([]);
+  const [selectedEpisode, setSelectedEpisode] = useState<EpisodeItem | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  useEffect(() => {
+  const destroyHls = () => {
+    hlsRef.current?.destroy();
+    hlsRef.current = null;
+  };
+
+  const loadStream = (url: string) => {
     const video = videoRef.current;
     if (!video) return;
+
+    destroyHls();
 
     if (Hls.isSupported()) {
       const hls = new Hls();
@@ -31,17 +58,69 @@ export default function PlayerPage() {
         setCurrentLevel(data.level);
       });
 
-      hls.loadSource(SAMPLE_EPISODE.streamUrl);
+      hls.loadSource(url);
       hls.attachMedia(video);
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = SAMPLE_EPISODE.streamUrl;
+      video.src = url;
+    }
+  };
+
+  useEffect(() => {
+    if (!slug) {
+      setStatusMessage("Add ?slug={anime-slug} to load episodes.");
+      loadStream(SAMPLE_EPISODE.streamUrl);
+      return;
     }
 
-    return () => {
-      hlsRef.current?.destroy();
-      hlsRef.current = null;
+    const fetchEpisodes = async () => {
+      setStatusMessage("Loading episodes…");
+      try {
+        const res = await fetch(`/api/v1/anime/${encodeURIComponent(slug)}/episodes`);
+        if (!res.ok) {
+          setStatusMessage("Failed to load episodes.");
+          return;
+        }
+        const data = (await res.json()) as EpisodeItem[];
+        setEpisodes(data);
+        if (data.length === 0) {
+          setStatusMessage("No episodes available.");
+          return;
+        }
+        selectEpisode(data[0]);
+      } catch (err) {
+        console.error(err);
+        setStatusMessage("Failed to load episodes.");
+      }
     };
-  }, []);
+
+    fetchEpisodes();
+
+    return () => {
+      destroyHls();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  const selectEpisode = (episode: EpisodeItem) => {
+    setSelectedEpisode(episode);
+    setLevels([]);
+    setCurrentLevel(-1);
+
+    const activeSources = episode.video_sources
+      .filter((vs) => vs.is_active !== false)
+      .sort((a, b) => a.priority - b.priority);
+
+    const source = activeSources[0];
+
+    if (!source) {
+      setStatusMessage("No active video sources for this episode.");
+      destroyHls();
+      return;
+    }
+
+    setStatusMessage(null);
+    loadStream(source.url);
+  };
 
   const handleQualityChange = (levelIndex: number) => {
     if (hlsRef.current) {
@@ -54,7 +133,9 @@ export default function PlayerPage() {
       <div className="w-full max-w-5xl flex flex-col gap-3">
         <div>
           <p className="text-sm text-gray-400 uppercase tracking-wide">Episode</p>
-          <h1 className="text-2xl font-semibold">{SAMPLE_EPISODE.title}</h1>
+          <h1 className="text-2xl font-semibold">
+            {selectedEpisode ? `Episode ${selectedEpisode.number}` : SAMPLE_EPISODE.title}
+          </h1>
         </div>
 
         <div className="relative w-full aspect-video bg-neutral-900 rounded-lg overflow-hidden">
@@ -67,6 +148,12 @@ export default function PlayerPage() {
             data-testid="hls-player"
           />
         </div>
+
+        {statusMessage && (
+          <div className="text-sm text-amber-300 bg-amber-900/30 border border-amber-700 rounded px-3 py-2">
+            {statusMessage}
+          </div>
+        )}
 
         {levels.length > 0 && (
           <div className="flex items-center gap-3">
@@ -83,6 +170,34 @@ export default function PlayerPage() {
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {episodes.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-gray-300">Episodes</p>
+            <div className="flex flex-wrap gap-2">
+              {episodes.map((episode) => {
+                const hasSources = episode.video_sources.some((vs) => vs.is_active !== false);
+                return (
+                  <button
+                    key={episode.id}
+                    type="button"
+                    onClick={() => selectEpisode(episode)}
+                    className={`px-3 py-2 rounded border text-sm ${
+                      episode.id === selectedEpisode?.id
+                        ? "bg-blue-600 border-blue-500 text-white"
+                        : hasSources
+                        ? "bg-neutral-800 border-neutral-700 text-white hover:border-blue-400"
+                        : "bg-neutral-900 border-neutral-800 text-gray-500 cursor-not-allowed"
+                    }`}
+                    disabled={!hasSources}
+                  >
+                    {episode.number}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
