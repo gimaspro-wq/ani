@@ -5,11 +5,14 @@ import { useParams, useRouter } from 'next/navigation';
 import { RequireAuth } from '@/components/admin/require-auth';
 import { AdminNav } from '@/components/admin/admin-nav';
 import { adminAPI, type AnimeDetail, type EpisodeListItem, type VideoSourceListItem } from '@/lib/admin-api';
+import { useAdminAuth } from '@/contexts/admin-auth-context';
 
 export default function AnimeEditPage() {
   const params = useParams();
   const router = useRouter();
   const animeId = params.id as string;
+  const { authState } = useAdminAuth();
+  const isAuthenticated = authState === 'authenticated';
 
   const [anime, setAnime] = useState<AnimeDetail | null>(null);
   const [episodes, setEpisodes] = useState<EpisodeListItem[]>([]);
@@ -60,6 +63,10 @@ export default function AnimeEditPage() {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const fetchData = async () => {
       try {
         const [animeData, episodesData] = await Promise.all([
@@ -83,7 +90,7 @@ export default function AnimeEditPage() {
     };
 
     fetchData();
-  }, [animeId]);
+  }, [animeId, isAuthenticated]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();

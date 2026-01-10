@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { RequireAuth } from '@/components/admin/require-auth';
 import { AdminNav } from '@/components/admin/admin-nav';
 import { adminAPI, type AnimeListItem } from '@/lib/admin-api';
+import { useAdminAuth } from '@/contexts/admin-auth-context';
 
 export default function AdminAnimePage() {
   const [anime, setAnime] = useState<AnimeListItem[]>([]);
@@ -13,8 +14,14 @@ export default function AdminAnimePage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const { authState } = useAdminAuth();
+  const isAuthenticated = authState === 'authenticated';
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const fetchAnime = async () => {
       setIsLoading(true);
       try {
@@ -30,7 +37,7 @@ export default function AdminAnimePage() {
     };
 
     fetchAnime();
-  }, [page, search]);
+  }, [isAuthenticated, page, search]);
 
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     try {
