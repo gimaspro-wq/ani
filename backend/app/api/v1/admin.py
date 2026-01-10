@@ -385,9 +385,9 @@ async def attach_episode(
 @router.post("/episodes/{episode_id}/detach", response_model=EpisodeListItem)
 async def detach_episode(
     episode_id: UUID,
+    detach_data: EpisodeDetachRequest,
     admin: Annotated[AdminUser, Depends(get_current_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    detach_data: EpisodeDetachRequest,
 ):
     """
     Logically detach an episode by disabling it.
