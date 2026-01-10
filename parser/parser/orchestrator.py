@@ -62,15 +62,7 @@ class ParserOrchestrator:
                 # Parse Shikimori data
                 anime_data = self.shikimori_client.parse_anime_data(shikimori_data)
                 
-                # Step 2: Import anime to backend
-                logger.info(f"Importing anime: {anime_data['title']}")
-                success = await self.backend_client.import_anime(anime_data)
-                
-                if not success:
-                    logger.error(f"Failed to import anime {anime_data['title']}")
-                    return False
-                
-                # Step 3: Fetch episodes from Kodik
+                # Step 2: Fetch episodes from Kodik
                 logger.info(f"Fetching episodes for anime {shikimori_id} from Kodik")
                 kodik_results = await self.kodik_client.get_anime_episodes(shikimori_id)
                 
@@ -85,7 +77,7 @@ class ParserOrchestrator:
                 # Parse episodes
                 episodes_data = self.kodik_client.parse_episodes(kodik_results, shikimori_id)
                 
-                # Step 4: Validate episode count is known
+                # Step 3: Validate episode count is known
                 if not episodes_data:
                     logger.warning(
                         f"Episode count unknown for anime {shikimori_id}, skipping title"
@@ -105,12 +97,19 @@ class ParserOrchestrator:
                     **anime_data,
                     "updated_at": now_iso,
                     "last_episode_number": last_episode_number,
-                    # Use import timestamp as best-available proxy for last episode time
+                    # Import timestamp as best-available proxy for last episode processing time
                     "last_episode_at": now_iso if last_episode_number is not None else None,
                 }
-                await self.backend_client.import_anime(anime_metadata)
                 
-                # Step 4: Import episodes to backend
+                # Step 4: Import anime to backend with metadata
+                logger.info(f"Importing anime: {anime_data['title']}")
+                success = await self.backend_client.import_anime(anime_metadata)
+                
+                if not success:
+                    logger.error(f"Failed to import anime {anime_data['title']}")
+                    return False
+                
+                # Step 5: Import episodes to backend
                 episodes_for_import = []
                 normalized_links_by_episode: dict[str, list[str]] = {}
                 for ep in episodes_data:
@@ -138,7 +137,7 @@ class ParserOrchestrator:
                     logger.error(f"Failed to import episodes for anime {source_id}")
                     return False
                 
-                # Step 5: Import video sources for each episode
+                # Step 6: Import video sources for each episode
                 video_import_errors = 0
                 for ep in episodes_data:
                     episode_source_id = generate_episode_source_id(source_id, ep["number"])
