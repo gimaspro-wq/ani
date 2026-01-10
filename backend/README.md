@@ -1,10 +1,10 @@
 # Backend Service
 
 ### Local Development
-- Required environment variables: `DATABASE_URL`, `SECRET_KEY`, `INTERNAL_TOKEN`, `REDIS_URL`
-- The backend will not start if any required variable is missing.
+- Backend fails fast if required environment variables are missing.
+- Required variables are derived from actual usage in `app/core/config.py`.
 
 ### Deploy to Render
 - Deploy the backend as a Web Service.
-- Set all required environment variables (`DATABASE_URL`, `SECRET_KEY`, `INTERNAL_TOKEN`, `REDIS_URL`) in the Render dashboard before deploying.
+- Set required environment variables in the Render dashboard; they are derived from `app/core/config.py`.
 - Startup will fail fast and list any missing variables.
