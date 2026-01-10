@@ -9,10 +9,14 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, admin } = useAdminAuth();
+  const { login, admin, authState } = useAdminAuth();
   const router = useRouter();
 
   // Redirect if already logged in
+  if (authState === 'loading') {
+    return null;
+  }
+
   if (admin) {
     router.push('/admin/dashboard');
     return null;

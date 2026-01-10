@@ -4,13 +4,20 @@ import { useEffect, useState } from 'react';
 import { RequireAuth } from '@/components/admin/require-auth';
 import { AdminNav } from '@/components/admin/admin-nav';
 import { adminAPI, type DashboardStats } from '@/lib/admin-api';
+import { useAdminAuth } from '@/contexts/admin-auth-context';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const { authState } = useAdminAuth();
+  const isAuthenticated = authState === 'authenticated';
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const fetchStats = async () => {
       try {
         const data = await adminAPI.getDashboard();
@@ -24,7 +31,7 @@ export default function AdminDashboard() {
     };
 
     fetchStats();
-  }, []);
+  }, [isAuthenticated]);
 
   return (
     <RequireAuth>

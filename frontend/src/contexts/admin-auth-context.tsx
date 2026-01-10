@@ -14,8 +14,11 @@ function isAdminUser(value: unknown): value is AdminUser {
   );
 }
 
+export type AdminAuthState = 'loading' | 'unauthenticated' | 'authenticated';
+
 interface AdminAuthContextType {
   admin: AdminUser | null;
+  authState: AdminAuthState;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -26,7 +29,7 @@ const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefin
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authState, setAuthState] = useState<AdminAuthState>('loading');
   const [authError, setAuthError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -40,18 +43,23 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
           if (isAdminUser(currentAdmin)) {
             setAdmin(currentAdmin);
             setAuthError(null);
+            setAuthState('authenticated');
           } else {
             setAdmin(null);
+            setAuthState('unauthenticated');
           }
         } catch (error: unknown) {
           // Token is invalid, clear it
           adminAPI.setToken(null);
+          setAdmin(null);
           if (typeof error === 'object' && error !== null && 'status' in error && (error as { status?: number }).status === 403) {
             setAuthError('Access denied');
           }
+          setAuthState('unauthenticated');
         }
+      } else {
+        setAuthState('unauthenticated');
       }
-      setIsLoading(false);
     };
 
     checkAuth();
@@ -63,20 +71,23 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     if (isAdminUser(currentAdmin)) {
       setAdmin(currentAdmin);
       setAuthError(null);
+      setAuthState('authenticated');
       router.push('/admin/dashboard');
     } else {
       setAdmin(null);
+      setAuthState('unauthenticated');
     }
   };
 
   const logout = () => {
     adminAPI.logout();
     setAdmin(null);
+    setAuthState('unauthenticated');
     router.push('/admin/login');
   };
 
   return (
-    <AdminAuthContext.Provider value={{ admin, isLoading, login, logout, authError }}>
+    <AdminAuthContext.Provider value={{ admin, authState, isLoading: authState === 'loading', login, logout, authError }}>
       {children}
     </AdminAuthContext.Provider>
   );
