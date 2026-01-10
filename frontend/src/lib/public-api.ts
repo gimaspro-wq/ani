@@ -1,22 +1,23 @@
 import type { AnimeDetail, AnimeListItem, Episode } from "@/lib/types";
-const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL;
+import { getServerBaseUrl } from "@/lib/server-base-url";
+
 const READ_API_BASE = "/api/read/anime";
 const LEGACY_EPISODES_BASE = "/api/v1/anime";
 
 function buildUrl(path: string): string {
+  // If URL is already absolute, use as-is
   if (path.startsWith("http")) {
     return path;
   }
 
+  // Client-side: use relative URL
   if (typeof window !== "undefined") {
     return path;
   }
 
-  if (!API_BASE) {
-    throw new Error("NEXT_PUBLIC_BACKEND_URL is not configured for server-side fetch");
-  }
-
-  return `${API_BASE}${path}`;
+  // Server-side: prefix with backend base URL
+  const baseUrl = getServerBaseUrl();
+  return `${baseUrl}${path}`;
 }
 
 async function fetchJson<T>(path: string): Promise<T | null> {
