@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Hls from "hls.js";
+import Hls, { Level } from "hls.js";
 import { useSearchParams } from "next/navigation";
 
 type EpisodeSource = {
@@ -26,7 +26,7 @@ const SAMPLE_EPISODE = {
 export default function PlayerPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const [levels, setLevels] = useState<Hls.Level[]>([]);
+  const [levels, setLevels] = useState<Level[]>([]);
   const [currentLevel, setCurrentLevel] = useState<number>(-1);
   const searchParams = useSearchParams();
   const slug = useMemo(() => searchParams.get("slug")?.trim(), [searchParams]);
