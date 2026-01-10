@@ -21,8 +21,9 @@ export default function AdminAnimePage() {
         const data = await adminAPI.listAnime({ page, per_page: 20, search: search || undefined });
         setAnime(data.items);
         setTotalPages(data.total_pages);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load anime');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to load anime';
+        setError(message);
       } finally {
         setIsLoading(false);
       }
@@ -37,8 +38,9 @@ export default function AdminAnimePage() {
       // Refresh the list
       const data = await adminAPI.listAnime({ page, per_page: 20, search: search || undefined });
       setAnime(data.items);
-    } catch (err: any) {
-      alert(`Failed to update anime: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update anime';
+      alert(`Failed to update anime: ${message}`);
     }
   };
 

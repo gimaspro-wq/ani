@@ -51,8 +51,9 @@ export default function AnimeEditPage() {
     try {
       const data = await adminAPI.listVideoSources(episodeId);
       setVideoSources(data.items);
-    } catch (err: any) {
-      setVideoError(err.message || 'Failed to load video sources');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load video sources';
+      setVideoError(message);
     } finally {
       setIsVideoLoading(false);
     }
@@ -73,8 +74,9 @@ export default function AnimeEditPage() {
         setDescription(animeData.description || '');
         setStatus(animeData.status || '');
         setIsActive(animeData.is_active);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load anime');
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to load anime';
+        setError(message);
       } finally {
         setIsLoading(false);
       }
@@ -97,8 +99,9 @@ export default function AnimeEditPage() {
       });
       setAnime(updated);
       alert('Anime updated successfully!');
-    } catch (err: any) {
-      setError(err.message || 'Failed to update anime');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update anime';
+      setError(message);
     } finally {
       setIsSaving(false);
     }
@@ -117,8 +120,9 @@ export default function AnimeEditPage() {
       });
       await reloadEpisodes();
       setEpisodeForm({ number: '', title: '', source_episode_id: '', is_active: true });
-    } catch (err: any) {
-      alert(err.message || 'Failed to create episode');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create episode';
+      alert(message);
     }
   };
 
@@ -141,8 +145,9 @@ export default function AnimeEditPage() {
       });
       await loadVideoSources(selectedEpisodeId);
       setVideoCreateForm({ type: 'hls', url: '', source_name: '', priority: '', is_active: true });
-    } catch (err: any) {
-      alert(err.message || 'Failed to create video source');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create video source';
+      alert(message);
     }
   };
 
@@ -151,8 +156,9 @@ export default function AnimeEditPage() {
     try {
       await adminAPI.updateVideoSource(video.id, { is_active: !video.is_active });
       await loadVideoSources(selectedEpisodeId);
-    } catch (err: any) {
-      alert(err.message || 'Failed to update video source');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update video source';
+      alert(message);
     }
   };
 
@@ -161,8 +167,9 @@ export default function AnimeEditPage() {
     try {
       await adminAPI.updateVideoSource(videoId, { priority });
       await loadVideoSources(selectedEpisodeId);
-    } catch (err: any) {
-      alert(err.message || 'Failed to update priority');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update priority';
+      alert(message);
     }
   };
 
@@ -171,8 +178,9 @@ export default function AnimeEditPage() {
       await adminAPI.updateEpisode(episodeId, { is_active: !currentActive });
       const episodesData = await adminAPI.listEpisodes(animeId);
       setEpisodes(episodesData.items);
-    } catch (err: any) {
-      alert(`Failed to update episode: ${err.message}`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to update episode';
+      alert(`Failed to update episode: ${message}`);
     }
   };
 
