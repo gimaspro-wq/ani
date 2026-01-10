@@ -32,6 +32,42 @@ def generate_episode_source_id(source_id: str, episode_number: int) -> str:
     return f"{source_id}:{episode_number}"
 
 
+def normalize_hls_url(url: str) -> str | None:
+    """
+    Normalize a video URL to a direct HLS (.m3u8) URL.
+    
+    Args:
+        url: Original URL (may be protocol-relative or iframe link)
+        
+    Returns:
+        Normalized URL with https scheme and HLS suffix when applicable.
+        Returns None if the URL is empty.
+    """
+    if not url:
+        return None
+    
+    cleaned = url.strip()
+    
+    # Ensure scheme
+    if cleaned.startswith("//"):
+        cleaned = f"https:{cleaned}"
+    
+    # Already HLS
+    if ".m3u8" in cleaned or ":hls:" in cleaned:
+        return cleaned
+    
+    # Common Kodik link endings (e.g., .../720p)
+    for suffix in ("360p", "480p", "720p", "1080p"):
+        if cleaned.endswith(suffix):
+            return f"{cleaned}.m3u8"
+    
+    # Fallback: convert mp4-style links to HLS manifest
+    if cleaned.endswith(".mp4"):
+        return f"{cleaned}:hls:manifest.m3u8"
+    
+    return cleaned
+
+
 def exponential_backoff_with_jitter(
     attempt: int,
     base_seconds: float = 1.0,

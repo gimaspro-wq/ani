@@ -1,13 +1,19 @@
 """Main orchestrator for the parser service."""
 import asyncio
 import logging
+from datetime import datetime
 from typing import Optional
 
 from parser.config import settings
 from parser.clients.kodik import KodikClient
 from parser.clients.shikimori import ShikimoriClient
 from parser.clients.backend import BackendClient
-from parser.utils import RateLimiter, generate_source_id, generate_episode_source_id
+from parser.utils import (
+    RateLimiter,
+    generate_source_id,
+    generate_episode_source_id,
+    normalize_hls_url,
+)
 from parser.state import StateManager
 
 logger = logging.getLogger(__name__)
@@ -43,11 +49,6 @@ class ParserOrchestrator:
         """
         async with self.semaphore:
             source_id = generate_source_id(shikimori_id)
-            
-            # Check if already processed (idempotent)
-            if self.state_manager.is_anime_processed(source_id):
-                logger.debug(f"Anime {source_id} already processed, skipping")
-                return True
             
             try:
                 # Step 1: Fetch metadata from Shikimori
@@ -93,6 +94,17 @@ class ParserOrchestrator:
                 
                 logger.info(f"Found {len(episodes_data)} episodes for anime {shikimori_id}")
                 
+                # Update metadata with episode-derived fields
+                last_episode_number = max(ep["number"] for ep in episodes_data)
+                now_iso = datetime.utcnow().isoformat()
+                anime_metadata = {
+                    **anime_data,
+                    "updated_at": now_iso,
+                    "last_episode_number": last_episode_number,
+                    "last_episode_at": now_iso,
+                }
+                await self.backend_client.import_anime(anime_metadata)
+                
                 # Step 4: Import episodes to backend
                 episodes_for_import = []
                 for ep in episodes_data:
@@ -101,7 +113,7 @@ class ParserOrchestrator:
                         "source_episode_id": episode_source_id,
                         "number": ep["number"],
                         "title": ep.get("title"),
-                        "is_available": True,
+                        "is_available": bool(ep.get("translations")),
                     })
                 
                 logger.info(f"Importing {len(episodes_for_import)} episodes for anime {source_id}")
@@ -118,6 +130,7 @@ class ParserOrchestrator:
                 video_import_errors = 0
                 for ep in episodes_data:
                     episode_source_id = generate_episode_source_id(source_id, ep["number"])
+                    seen_urls = set()
                     
                     # Check if episode has any translations
                     if not ep.get("translations"):
@@ -129,10 +142,22 @@ class ParserOrchestrator:
                     
                     # Import all translations/players for this episode
                     for idx, translation in enumerate(ep.get("translations", [])):
+                        normalized_url = normalize_hls_url(translation.get("link"))
+                        if not normalized_url:
+                            logger.warning(
+                                f"Skipping empty video URL for episode {ep['number']} of anime {source_id}"
+                            )
+                            continue
+                        
+                        url_key = (settings.SOURCE_NAME, normalized_url)
+                        if url_key in seen_urls:
+                            continue
+                        seen_urls.add(url_key)
+                        
                         player_data = {
-                            "type": "iframe",
-                            "url": translation["link"],
-                            "source_name": "kodik",  # Player source name as per requirement
+                            "type": "hls",
+                            "url": normalized_url,
+                            "source_name": settings.SOURCE_NAME,
                             "priority": idx,  # Lower index = higher priority
                         }
                         
@@ -142,6 +167,12 @@ class ParserOrchestrator:
                             player_data=player_data,
                         )
                         if not success:
+                            logger.error(
+                                "Failed to import video for anime %s episode %s (url=%s)",
+                                source_id,
+                                ep["number"],
+                                normalized_url,
+                            )
                             video_import_errors += 1
                 
                 if video_import_errors > 0:
