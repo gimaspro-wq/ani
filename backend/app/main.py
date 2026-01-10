@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.api.v1 import auth, users, library, anime, internal, admin
 from app.api.read import read_anime, read_user
@@ -17,8 +16,12 @@ from app.core.exception_handlers import (
     unhandled_exception_handler,
     validation_error_handler,
 )
+from app.core.health.routes import router as health_router
 from app.core.logging_config import setup_logging
-from app.core.middleware import AccessLogMiddleware, SecurityHeadersMiddleware, TraceIDMiddleware
+from app.core.middleware import SecurityHeadersMiddleware, TraceIDMiddleware
+from app.core.observability.metrics import metrics_endpoint
+from app.core.observability.request_logging import ObservabilityMiddleware
+from app.core.observability.startup import log_startup_metadata, validate_required_env
 from app.core.rate_limiting import limiter, RateLimitMiddleware
 from app.core.tracing import setup_tracing
 from app.infrastructure.adapters.redis_client import redis_client
@@ -30,7 +33,7 @@ from app.db.database import engine
 
 
 # Setup logging
-setup_logging(debug=settings.DEBUG)
+setup_logging(debug=settings.DEBUG, service_name=settings.APP_NAME)
 logger = logging.getLogger(__name__)
 
 @asynccontextmanager
@@ -39,6 +42,8 @@ async def lifespan(app: FastAPI):
     
     # Startup
     logger.info(f"Starting {settings.APP_NAME} v{settings.VERSION} (env={settings.ENV})")
+    validate_required_env()
+    log_startup_metadata()
     
     # Connect to Redis (skip in test mode if Redis is not available)
     try:
@@ -116,8 +121,8 @@ if settings.RATE_LIMIT_ENABLED:
     app.add_middleware(RateLimitMiddleware)
     app.state.limiter = limiter
 
-# 4. Access logging
-app.add_middleware(AccessLogMiddleware)
+# 4. Observability (logging + metrics)
+app.add_middleware(ObservabilityMiddleware)
 
 # 5. CORS (innermost, closest to routes)
 app.add_middleware(
@@ -132,8 +137,7 @@ app.add_middleware(
 
 # Setup Prometheus metrics
 if settings.METRICS_ENABLED:
-    instrumentator = Instrumentator()
-    instrumentator.instrument(app).expose(app, endpoint="/metrics")
+    app.add_route("/metrics", metrics_endpoint, methods=["GET"])
     logger.info("Prometheus metrics enabled at /metrics")
 
 # Setup OpenTelemetry tracing
@@ -149,15 +153,10 @@ app.include_router(internal.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(read_anime.router)
 app.include_router(read_user.router)
+app.include_router(health_router)
 
 
 @app.get("/")
 async def root():
     """Root endpoint."""
     return {"message": f"Welcome to {settings.APP_NAME}"}
-
-
-@app.get("/health")
-async def health():
-    """Health check endpoint."""
-    return {"status": "healthy", "version": settings.VERSION}
