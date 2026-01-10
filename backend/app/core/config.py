@@ -1,3 +1,4 @@
+import os
 from typing import Literal, Type, TypeVar
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator, ValidationError as PydanticValidationError
@@ -5,6 +6,18 @@ from pydantic import field_validator, ValidationError as PydanticValidationError
 
 # Cookie constants
 REFRESH_COOKIE_NAME = "refresh_token"
+
+
+_missing_env_vars: set[str] = set()
+
+
+def require_env(name: str) -> str:
+    """Read required environment variable and collect missing names."""
+    value = os.getenv(name)
+    if value is None or value == "":
+        _missing_env_vars.add(name)
+        return ""
+    return value
 
 
 class _BaseSettings(BaseSettings):
@@ -206,10 +219,29 @@ class ScriptSettings(_BaseSettings):
 SettingsT = TypeVar("SettingsT", bound=_BaseSettings)
 
 
+def _ensure_required_envs_present() -> None:
+    if _missing_env_vars:
+        missing = ", ".join(sorted(_missing_env_vars))
+        _missing_env_vars.clear()
+        raise RuntimeError(f"Missing required environment variables: {missing}")
+
+
+def _required_field_names(settings_cls: Type[_BaseSettings]) -> list[str]:
+    return [
+        name for name, field in settings_cls.model_fields.items() if field.is_required()
+    ]
+
+
 def load_settings(settings_cls: Type[SettingsT] = Settings) -> SettingsT:
     """Load and validate settings."""
+    _missing_env_vars.clear()
+    env_overrides = {
+        name: require_env(name) for name in _required_field_names(settings_cls)
+    }
+    _ensure_required_envs_present()
     try:
-        return settings_cls()
+        instance = settings_cls(**env_overrides)
+        return instance
     except PydanticValidationError as e:
         # Re-raise with better error message for missing configs
         error_messages = []
