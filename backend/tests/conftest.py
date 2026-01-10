@@ -62,7 +62,11 @@ async def _run_migrations() -> None:
     """Apply Alembic migrations to the test database."""
     config = Config(str(ROOT_DIR / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", _async_db_url)
+    config.set_main_option("script_location", str(ROOT_DIR / "alembic"))
     await asyncio.to_thread(command.upgrade, config, "head")
+    # Ensure metadata is in place even if migrations are skipped in constrained envs
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 
 async def _truncate_db() -> None:

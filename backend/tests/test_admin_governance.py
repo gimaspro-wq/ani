@@ -8,6 +8,7 @@ from app.api.v1.admin import (
     reattach_episode,
     disable_video_source,
     update_video_source,
+    list_anime,
 )
 from app.schemas.admin import EpisodeReattachRequest, VideoSourceUpdateRequest, VideoSourceDisableRequest
 from app.db.models import Anime, Episode, VideoSource
@@ -132,3 +133,24 @@ async def test_admin_can_disable_and_reorder_video_source():
             db=session,
         )
         assert updated.priority == 5
+
+
+@pytest.mark.asyncio
+async def test_admin_list_anime_includes_source_and_visibility():
+    suffix = uuid4().hex[:6]
+    await _seed_anime_and_episode(suffix=suffix)
+    admin = await _seed_admin()
+
+    async with AsyncTestingSessionLocal() as session:
+        response = await list_anime(
+            admin=admin,
+            db=session,
+            page=1,
+            per_page=10,
+            search=f"anime-one{suffix}",
+        )
+        assert response.total == 1
+        item = response.items[0]
+        assert item.source_id == f"a1{suffix}"
+        assert item.source_name == "kodik"
+        assert item.is_active is True

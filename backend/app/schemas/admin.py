@@ -50,6 +50,7 @@ class AnimeListItem(BaseModel):
     title: str
     year: Optional[int]
     status: Optional[str]
+    source_id: str
     source_name: str
     is_active: bool
     admin_modified: bool
