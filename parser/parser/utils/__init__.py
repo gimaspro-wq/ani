@@ -53,7 +53,7 @@ def normalize_hls_url(url: str | None) -> str | None:
         cleaned = f"https:{cleaned}"
     
     # Already HLS
-    if ".m3u8" in cleaned or ":hls:" in cleaned:
+    if ".m3u8" in cleaned or cleaned.endswith(":hls:manifest.m3u8"):
         return cleaned
     
     # Common Kodik link endings (e.g., .../720p)

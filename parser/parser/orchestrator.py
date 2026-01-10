@@ -95,25 +95,37 @@ class ParserOrchestrator:
                 logger.info(f"Found {len(episodes_data)} episodes for anime {shikimori_id}")
                 
                 # Update metadata with episode-derived fields
-                last_episode_number = max(ep["number"] for ep in episodes_data) if episodes_data else None
+                episode_numbers = [
+                    ep.get("number") for ep in episodes_data
+                    if isinstance(ep.get("number"), (int, float))
+                ]
+                last_episode_number = max(episode_numbers) if episode_numbers else None
                 now_iso = datetime.now(timezone.utc).isoformat()
                 anime_metadata = {
                     **anime_data,
                     "updated_at": now_iso,
                     "last_episode_number": last_episode_number,
+                    # Use import timestamp as best-available proxy for last episode time
                     "last_episode_at": now_iso if last_episode_number is not None else None,
                 }
                 await self.backend_client.import_anime(anime_metadata)
                 
                 # Step 4: Import episodes to backend
                 episodes_for_import = []
+                normalized_links_by_episode: dict[str, list[str]] = {}
                 for ep in episodes_data:
                     episode_source_id = generate_episode_source_id(source_id, ep["number"])
+                    normalized_links = []
+                    for translation in ep.get("translations", []):
+                        normalized = normalize_hls_url(translation.get("link"))
+                        if normalized:
+                            normalized_links.append(normalized)
+                    normalized_links_by_episode[episode_source_id] = normalized_links
                     episodes_for_import.append({
                         "source_episode_id": episode_source_id,
                         "number": ep["number"],
                         "title": ep.get("title"),
-                        "is_available": bool(ep.get("translations")),
+                        "is_available": bool(normalized_links),
                     })
                 
                 logger.info(f"Importing {len(episodes_for_import)} episodes for anime {source_id}")
@@ -131,9 +143,10 @@ class ParserOrchestrator:
                 for ep in episodes_data:
                     episode_source_id = generate_episode_source_id(source_id, ep["number"])
                     seen_urls = set()
+                    normalized_links = normalized_links_by_episode.get(episode_source_id, [])
                     
                     # Check if episode has any translations
-                    if not ep.get("translations"):
+                    if not normalized_links:
                         logger.warning(
                             f"No videos for episode {ep['number']} of anime {source_id}, "
                             "but episode remains"
@@ -141,18 +154,10 @@ class ParserOrchestrator:
                         continue
                     
                     # Import all translations/players for this episode
-                    for idx, translation in enumerate(ep.get("translations", [])):
-                        normalized_url = normalize_hls_url(translation.get("link"))
-                        if not normalized_url:
-                            logger.warning(
-                                f"Skipping empty video URL for episode {ep['number']} of anime {source_id}"
-                            )
+                    for idx, normalized_url in enumerate(normalized_links):
+                        if normalized_url in seen_urls:
                             continue
-                        
-                        url_key = (settings.SOURCE_NAME, normalized_url)
-                        if url_key in seen_urls:
-                            continue
-                        seen_urls.add(url_key)
+                        seen_urls.add(normalized_url)
                         
                         player_data = {
                             "type": "hls",
