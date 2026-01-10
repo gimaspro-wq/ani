@@ -32,7 +32,7 @@ def generate_episode_source_id(source_id: str, episode_number: int) -> str:
     return f"{source_id}:{episode_number}"
 
 
-def normalize_hls_url(url: str) -> str | None:
+def normalize_hls_url(url: str | None) -> str | None:
     """
     Normalize a video URL to a direct HLS (.m3u8) URL.
     

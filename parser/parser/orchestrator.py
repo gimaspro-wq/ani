@@ -1,7 +1,7 @@
 """Main orchestrator for the parser service."""
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from parser.config import settings
@@ -95,13 +95,13 @@ class ParserOrchestrator:
                 logger.info(f"Found {len(episodes_data)} episodes for anime {shikimori_id}")
                 
                 # Update metadata with episode-derived fields
-                last_episode_number = max(ep["number"] for ep in episodes_data)
-                now_iso = datetime.utcnow().isoformat()
+                last_episode_number = max(ep["number"] for ep in episodes_data) if episodes_data else None
+                now_iso = datetime.now(timezone.utc).isoformat()
                 anime_metadata = {
                     **anime_data,
                     "updated_at": now_iso,
                     "last_episode_number": last_episode_number,
-                    "last_episode_at": now_iso,
+                    "last_episode_at": now_iso if last_episode_number is not None else None,
                 }
                 await self.backend_client.import_anime(anime_metadata)
                 
