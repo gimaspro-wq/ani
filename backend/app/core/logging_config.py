@@ -9,8 +9,6 @@ from uuid import uuid4
 
 # Context variable to store trace_id across async calls
 trace_id_var: ContextVar[str] = ContextVar("trace_id", default="")
-_service_name = "app"
-_include_stack_traces = False
 
 
 def get_trace_id() -> str:
@@ -34,12 +32,10 @@ class JSONFormatter(logging.Formatter):
             "logger": record.name,
             "message": record.getMessage(),
             "trace_id": get_trace_id(),
-            "request_id": get_trace_id(),
-            "service": _service_name,
         }
         
         # Add exception info if present
-        if record.exc_info and _include_stack_traces:
+        if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
         
         # Add extra fields
@@ -49,13 +45,9 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_data)
 
 
-def setup_logging(debug: bool = False, service_name: str | None = None) -> None:
+def setup_logging(debug: bool = False) -> None:
     """Configure structured JSON logging."""
-    global _service_name, _include_stack_traces
-
     level = logging.DEBUG if debug else logging.INFO
-    _service_name = service_name or _service_name
-    _include_stack_traces = bool(debug)
     
     # Create handler
     handler = logging.StreamHandler(sys.stdout)
