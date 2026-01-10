@@ -387,7 +387,7 @@ async def detach_episode(
     episode_id: UUID,
     admin: Annotated[AdminUser, Depends(get_current_admin)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    detach_data: EpisodeDetachRequest | None = None,
+    detach_data: EpisodeDetachRequest,
 ):
     """
     Logically detach an episode by disabling it.
@@ -409,13 +409,14 @@ async def detach_episode(
         await db.commit()
         await db.refresh(episode)
 
+        reason_changes = {"reason": detach_data.reason} if detach_data.reason else {}
         await log_admin_action(
             db=db,
             admin_id=admin.id,
             action="detach",
             resource_type="episode",
             resource_id=str(episode_id),
-            changes=changes | ({"reason": detach_data.reason} if detach_data and detach_data.reason else {}),
+            changes={**changes, **reason_changes},
         )
         logger.info(f"Admin {admin.email} detached episode {episode_id}")
 
