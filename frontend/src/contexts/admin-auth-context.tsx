@@ -9,6 +9,7 @@ interface AdminAuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  authError: string | null;
 }
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
@@ -16,6 +17,7 @@ const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefin
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -26,9 +28,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         try {
           const currentAdmin = await adminAPI.getCurrentAdmin();
           setAdmin(currentAdmin);
-        } catch (error) {
+          setAuthError(null);
+        } catch (error: any) {
           // Token is invalid, clear it
           adminAPI.setToken(null);
+          if (error?.status === 403) {
+            setAuthError('Access denied');
+          }
         }
       }
       setIsLoading(false);
@@ -41,6 +47,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     await adminAPI.login({ email, password });
     const currentAdmin = await adminAPI.getCurrentAdmin();
     setAdmin(currentAdmin);
+    setAuthError(null);
     router.push('/admin/dashboard');
   };
 
@@ -51,7 +58,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AdminAuthContext.Provider value={{ admin, isLoading, login, logout }}>
+    <AdminAuthContext.Provider value={{ admin, isLoading, login, logout, authError }}>
       {children}
     </AdminAuthContext.Provider>
   );

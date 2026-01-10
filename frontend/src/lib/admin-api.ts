@@ -96,6 +96,7 @@ export interface EpisodeListItem {
   title: string | null;
   source_episode_id: string;
   is_active: boolean;
+  has_video?: boolean;
   admin_modified: boolean;
   created_at: string;
   updated_at: string;
@@ -197,7 +198,9 @@ class AdminAPIClient {
       } catch {
         // Response was not JSON, use the default error message
       }
-      throw new Error(errorMessage);
+      const err = new Error(errorMessage) as Error & { status?: number };
+      err.status = response.status;
+      throw err;
     }
 
     // Handle 204 No Content

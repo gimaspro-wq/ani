@@ -23,7 +23,6 @@ export default function AnimeEditPage() {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [year, setYear] = useState<number | ''>('');
   const [status, setStatus] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -31,12 +30,6 @@ export default function AnimeEditPage() {
     number: '',
     title: '',
     source_episode_id: '',
-    is_active: true,
-  });
-  const [editingEpisodeId, setEditingEpisodeId] = useState<string | null>(null);
-  const [editEpisodeFields, setEditEpisodeFields] = useState<{ number: string; title: string; is_active: boolean }>({
-    number: '',
-    title: '',
     is_active: true,
   });
   const [videoCreateForm, setVideoCreateForm] = useState({
@@ -78,7 +71,6 @@ export default function AnimeEditPage() {
         // Set form values
         setTitle(animeData.title);
         setDescription(animeData.description || '');
-        setYear(animeData.year || '');
         setStatus(animeData.status || '');
         setIsActive(animeData.is_active);
       } catch (err: any) {
@@ -99,10 +91,9 @@ export default function AnimeEditPage() {
     try {
       const updated = await adminAPI.updateAnime(animeId, {
         title,
-        description: description || undefined,
-        year: year || undefined,
-        status: status || undefined,
-        is_active: isActive,
+         description: description || undefined,
+         status: status || undefined,
+         is_active: isActive,
       });
       setAnime(updated);
       alert('Anime updated successfully!');
@@ -128,29 +119,6 @@ export default function AnimeEditPage() {
       setEpisodeForm({ number: '', title: '', source_episode_id: '', is_active: true });
     } catch (err: any) {
       alert(err.message || 'Failed to create episode');
-    }
-  };
-
-  const startEditEpisode = (ep: EpisodeListItem) => {
-    setEditingEpisodeId(ep.id);
-    setEditEpisodeFields({
-      number: ep.number.toString(),
-      title: ep.title || '',
-      is_active: ep.is_active,
-    });
-  };
-
-  const handleSaveEpisode = async (epId: string) => {
-    try {
-      await adminAPI.updateEpisode(epId, {
-        number: editEpisodeFields.number ? Number(editEpisodeFields.number) : undefined,
-        title: editEpisodeFields.title || undefined,
-        is_active: editEpisodeFields.is_active,
-      });
-      await reloadEpisodes();
-      setEditingEpisodeId(null);
-    } catch (err: any) {
-      alert(err.message || 'Failed to update episode');
     }
   };
 
@@ -185,16 +153,6 @@ export default function AnimeEditPage() {
       await loadVideoSources(selectedEpisodeId);
     } catch (err: any) {
       alert(err.message || 'Failed to update video source');
-    }
-  };
-
-  const handleDeleteVideo = async (videoId: string) => {
-    if (!selectedEpisodeId) return;
-    try {
-      await adminAPI.deleteVideoSource(videoId);
-      await loadVideoSources(selectedEpisodeId);
-    } catch (err: any) {
-      alert(err.message || 'Failed to delete video source');
     }
   };
 
@@ -281,34 +239,20 @@ export default function AnimeEditPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Year
-                      </label>
-                      <input
-                        type="number"
-                        value={year}
-                        onChange={(e) => setYear(e.target.value ? parseInt(e.target.value) : '')}
-                        className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Status
-                      </label>
-                      <select
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                        className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white"
-                      >
-                        <option value="">Select status</option>
-                        <option value="ongoing">Ongoing</option>
-                        <option value="completed">Completed</option>
-                        <option value="upcoming">Upcoming</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Status
+                    </label>
+                    <select
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value)}
+                      className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-gray-900 dark:text-white"
+                    >
+                      <option value="">Select status</option>
+                      <option value="ongoing">Ongoing</option>
+                      <option value="completed">Completed</option>
+                      <option value="upcoming">Upcoming</option>
+                    </select>
                   </div>
 
                   <div className="flex items-center">
@@ -421,95 +365,65 @@ export default function AnimeEditPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {episodes.length === 0 ? (
-                        <tr>
-                          <td colSpan={3} className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
-                            No episodes yet
-                          </td>
-                        </tr>
-                      ) : (
-                        episodes.map((ep) => (
-                          <tr key={ep.id}>
-                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white">
-                              {editingEpisodeId === ep.id ? (
-                                <input
-                                  type="number"
-                                  value={editEpisodeFields.number}
-                                  onChange={(e) => setEditEpisodeFields((f) => ({ ...f, number: e.target.value }))}
-                                  className="mt-1 block w-24 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1 text-gray-900 dark:text-white"
-                                />
-                              ) : (
-                                <>Episode {ep.number}</>
-                              )}
-                            </td>
-                            <td className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400">
-                              {editingEpisodeId === ep.id ? (
-                                <input
-                                  type="text"
-                                  value={editEpisodeFields.title}
-                                  onChange={(e) => setEditEpisodeFields((f) => ({ ...f, title: e.target.value }))}
-                                  className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1 text-gray-900 dark:text-white"
-                                />
-                              ) : (
-                                ep.title || '-'
-                              )}
-                            </td>
-                            <td className="px-3 py-4 text-sm">
-                              <button
-                                onClick={() =>
-                                  editingEpisodeId === ep.id
-                                    ? setEditEpisodeFields((f) => ({ ...f, is_active: !f.is_active }))
-                                    : handleToggleEpisode(ep.id, ep.is_active)
-                                }
-                                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                                  editingEpisodeId === ep.id ? editEpisodeFields.is_active : ep.is_active
-                                    ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
-                                    : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
-                                }`}
-                              >
-                                {editingEpisodeId === ep.id ? (editEpisodeFields.is_active ? 'Active' : 'Inactive') : ep.is_active ? 'Active' : 'Inactive'}
-                              </button>
-                            </td>
-                            <td className="px-3 py-4 text-sm space-x-2">
-                              {editingEpisodeId === ep.id ? (
-                                <>
-                                  <button
-                                    onClick={() => handleSaveEpisode(ep.id)}
-                                    className="rounded-md bg-blue-600 px-2 py-1 text-xs font-semibold text-white"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => setEditingEpisodeId(null)}
-                                    className="rounded-md bg-gray-200 dark:bg-gray-700 px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-100"
-                                  >
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => startEditEpisode(ep)}
-                                    className="rounded-md bg-gray-200 dark:bg-gray-700 px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-100"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={() => handleSelectEpisode(ep.id)}
-                                    className={`rounded-md px-2 py-1 text-xs font-semibold ${
-                                      selectedEpisodeId === ep.id
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
-                                    }`}
-                                  >
-                                    Video Sources
-                                  </button>
-                                </>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
+                       {episodes.length === 0 ? (
+                         <tr>
+                           <td colSpan={3} className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                             No episodes yet
+                           </td>
+                         </tr>
+                       ) : (
+                         episodes.map((ep) => (
+                           <tr
+                             key={ep.id}
+                             className={!ep.is_active ? 'bg-gray-50 dark:bg-gray-900/40' : ''}
+                           >
+                             <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white">
+                               Episode {ep.number}
+                             </td>
+                             <td className="px-3 py-4 text-sm text-gray-500 dark:text-gray-400 space-y-1">
+                               <div>{ep.title || '-'}</div>
+                               <div className="flex items-center space-x-2">
+                                 <span
+                                   className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                     ep.is_active
+                                       ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                                       : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+                                   }`}
+                                 >
+                                   {ep.is_active ? 'Active' : 'Inactive'}
+                                 </span>
+                                 <span
+                                   className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                                     ep.has_video
+                                       ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200'
+                                       : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                                   }`}
+                                 >
+                                   {ep.has_video ? 'Has video' : 'No video'}
+                                 </span>
+                               </div>
+                             </td>
+                             <td className="px-3 py-4 text-sm space-x-2">
+                               <button
+                                 onClick={() => handleToggleEpisode(ep.id, ep.is_active)}
+                                 className="rounded-md bg-gray-200 dark:bg-gray-700 px-2 py-1 text-xs font-semibold text-gray-800 dark:text-gray-100"
+                               >
+                                 {ep.is_active ? 'Disable' : 'Enable'}
+                               </button>
+                               <button
+                                 onClick={() => handleSelectEpisode(ep.id)}
+                                 className={`rounded-md px-2 py-1 text-xs font-semibold ${
+                                   selectedEpisodeId === ep.id
+                                     ? 'bg-blue-600 text-white'
+                                     : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-700'
+                                 }`}
+                               >
+                                 Video Sources
+                               </button>
+                             </td>
+                           </tr>
+                         ))
+                       )}
                     </tbody>
                   </table>
                 </div>
@@ -608,10 +522,10 @@ export default function AnimeEditPage() {
                             </tr>
                           ) : (
                             videoSources.map((vs) => (
-                              <tr key={vs.id}>
-                                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white">
-                                  {vs.type}
-                                </td>
+                            <tr key={vs.id} className={!vs.is_active ? 'bg-gray-50 dark:bg-gray-900/40' : ''}>
+                              <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 dark:text-white">
+                                {vs.type}
+                              </td>
                                 <td className="px-3 py-4 text-sm text-blue-600 dark:text-blue-300 break-all">
                                   {vs.url}
                                 </td>
@@ -640,16 +554,9 @@ export default function AnimeEditPage() {
                                     {vs.is_active ? 'Active' : 'Inactive'}
                                   </button>
                                 </td>
-                                <td className="px-3 py-4 text-sm space-x-2">
-                                  <button
-                                    onClick={() => handleDeleteVideo(vs.id)}
-                                    className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white"
-                                  >
-                                    Delete
-                                  </button>
-                                </td>
-                              </tr>
-                            ))
+                              <td className="px-3 py-4 text-sm space-x-2"></td>
+                            </tr>
+                          ))
                           )}
                         </tbody>
                       </table>
