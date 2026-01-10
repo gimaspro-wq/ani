@@ -1,4 +1,4 @@
-from typing import Literal, Type, TypeVar
+from typing import Literal, Sequence, Type, TypeVar
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import field_validator, ValidationError as PydanticValidationError
 
@@ -203,6 +203,21 @@ class ScriptSettings(_BaseSettings):
     DATABASE_URL: str
 
 
+def _format_missing_env_vars(errors: Sequence[dict]) -> str | None:
+    """Return a human-readable message for missing required environment variables."""
+    missing = []
+    seen = set()
+    for error in errors:
+        if error.get("type") == "missing" or error.get("msg") == "Field required":
+            field = ".".join(str(loc) for loc in error.get("loc", ()))
+            if field and field not in seen:
+                seen.add(field)
+                missing.append(field)
+    if missing:
+        return "Missing required environment variables: " + ", ".join(missing)
+    return None
+
+
 SettingsT = TypeVar("SettingsT", bound=_BaseSettings)
 
 
@@ -211,6 +226,9 @@ def load_settings(settings_cls: Type[SettingsT] = Settings) -> SettingsT:
     try:
         return settings_cls()
     except PydanticValidationError as e:
+        missing_env_message = _format_missing_env_vars(e.errors())
+        if missing_env_message:
+            raise RuntimeError(missing_env_message) from e
         # Re-raise with better error message for missing configs
         error_messages = []
         for error in e.errors():
